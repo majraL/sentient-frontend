@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { AddBrandModal } from "@/components/shared/add-brand-modal";
 import { PageShell } from "@/components/shared/page-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { BrandTabs } from "@/components/shared/brand-tabs";
@@ -23,18 +25,6 @@ function isProcessing(row: QueryRow) {
   return row.status === "searching" || row.status === "analyzing";
 }
 
-function getRowUrlValue(row: QueryRow) {
-  if (row.status === "done") {
-    return "10";
-  }
-
-  if (row.status === "failed") {
-    return "0";
-  }
-
-  return "—";
-}
-
 function getRowSentiment(row: QueryRow) {
   if (row.status !== "done") {
     return "invalid" as const;
@@ -52,10 +42,12 @@ function getRowSentiment(row: QueryRow) {
 }
 
 export function DashboardScreen() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [activeBrandId, setActiveBrandId] = useState("");
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [usePreviousResults, setUsePreviousResults] = useState(true);
+  const [isNewBrandOpen, setIsNewBrandOpen] = useState(false);
 
   const brandsQuery = useQuery({
     queryKey: ["dashboard-brands"],
@@ -141,6 +133,8 @@ export function DashboardScreen() {
       <BrandTabs
         brands={brandsQuery.data}
         activeBrandId={resolvedBrandId}
+        showNewBrandAction
+        onNewBrandClick={() => setIsNewBrandOpen(true)}
         onChange={(brandId) => {
           setActiveBrandId(brandId);
           setActiveRowId(null);
@@ -159,8 +153,8 @@ export function DashboardScreen() {
         disabled={!selectedCount}
       />
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <AppTable title="Query execution table" description="Select rows to search and analyze for the active brand.">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px]">
+        <AppTable title="Tasks" description="Select tasks to search and analyze for the active brand.">
           {rowsQuery.data.length ? (
             <Table>
               <TableHeader>
@@ -171,9 +165,7 @@ export function DashboardScreen() {
                   <TableHead>Language</TableHead>
                   <TableHead>Keyword</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>URLs</TableHead>
                   <TableHead>Sentiment</TableHead>
-                  <TableHead>Score</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -199,11 +191,6 @@ export function DashboardScreen() {
                     <TableCell><StatusBadge status={row.status} /></TableCell>
                     <TableCell>
                       <ProcessingCellOverlay active={isProcessing(row)} label={row.status}>
-                        <span>{getRowUrlValue(row)}</span>
-                      </ProcessingCellOverlay>
-                    </TableCell>
-                    <TableCell>
-                      <ProcessingCellOverlay active={isProcessing(row)} label={row.status}>
                         <div>
                           {row.id === resolvedActiveRowId && row.status === "done" ? (
                             <SentimentBadge sentiment={topSentiment} />
@@ -213,24 +200,31 @@ export function DashboardScreen() {
                         </div>
                       </ProcessingCellOverlay>
                     </TableCell>
-                    <TableCell>
-                      <ProcessingCellOverlay active={isProcessing(row)} label={row.status}>
-                        <span>{row.status === "done" ? row.score.toFixed(2) : row.status === "failed" ? "—" : "—"}</span>
-                      </ProcessingCellOverlay>
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           ) : (
             <div className="p-6">
-              <EmptyState title="No query rows found" description="Create configuration rows for this brand to begin execution." />
+              <EmptyState title="No query rows found" description="Create tasks for this brand to begin execution." />
             </div>
           )}
         </AppTable>
 
         <QueryResultPanel row={activeRow} results={resultsQuery.data ?? []} />
       </section>
+
+      <AddBrandModal
+        open={isNewBrandOpen}
+        onOpenChange={setIsNewBrandOpen}
+        onCreated={async (brand) => {
+          await queryClient.invalidateQueries({ queryKey: ["dashboard-brands"] });
+          await queryClient.invalidateQueries({ queryKey: ["brands"] });
+          setActiveBrandId(brand.id);
+          setActiveRowId(null);
+          router.push(`/configuration?brandId=${brand.id}`);
+        }}
+      />
     </PageShell>
   );
 }

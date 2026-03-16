@@ -4,7 +4,7 @@ import type { UserRole } from "@/types/auth";
 export type TenantPlan = "starter" | "growth" | "enterprise";
 export type QueryStatus = "pending" | "searching" | "analyzing" | "done" | "failed";
 export type QuerySentiment = "positive" | "neutral" | "negative" | "invalid";
-export type RunStatus = "queued" | "running" | "completed" | "failed";
+export type RunStatus = "queued" | "ready" | "scheduled" | "running" | "completed" | "failed";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "cancelled";
 export type ApiStatus = "healthy" | "degraded" | "down";
 
@@ -41,6 +41,7 @@ export type BrandConfigRow = {
   languageName: string;
   geolocation: string | null;
   keywords: string[];
+  runId?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -76,10 +77,15 @@ export type QueryResultUrl = {
 export type Run = {
   id: EntityId;
   tenantId: string;
+  name: string;
+  description?: string;
+  status: RunStatus;
+  createdAt: string;
+  executionMode: "now" | "scheduled";
+  scheduledFor: string | null;
+  taskIds: string[];
   brandId: string;
   brandName: string;
-  name: string;
-  status: RunStatus;
   startedAt: string;
   finishedAt: string | null;
   totalQueries: number;
@@ -167,4 +173,24 @@ export type DashboardQuerySummary = {
   selected: number;
   completed: number;
   failed: number;
+};
+
+export type RunTaskOption = {
+  id: EntityId;
+  brandId: string;
+  brandName: string;
+  countryCode: string;
+  countryName: string;
+  languageCode: string;
+  languageName: string;
+  geolocation: string | null;
+  keywords: string[];
+};
+
+export type CreateRunPayload = {
+  name: string;
+  description?: string;
+  taskIds: string[];
+  executionMode: "now" | "scheduled";
+  scheduledFor: string | null;
 };

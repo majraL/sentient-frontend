@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { Pencil, Trash2 } from "lucide-react";
+import { ArrowRight, Pencil, Trash2 } from "lucide-react";
 import { AddBrandModal } from "@/components/shared/add-brand-modal";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageShell } from "@/components/shared/page-shell";
@@ -29,9 +29,11 @@ export function ConfigurationScreen() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [assigningTaskId, setAssigningTaskId] = useState<string | null>(null);
   const [isNewBrandOpen, setIsNewBrandOpen] = useState(false);
-  const taskFormRef = useRef<HTMLDivElement | null>(null);
-  const taskCountryInputRef = useRef<HTMLInputElement | null>(null);
+  const [createKeywordsInput, setCreateKeywordsInput] = useState("");
+  const [editKeywordsInput, setEditKeywordsInput] = useState("");
+  const [selectedRunId, setSelectedRunId] = useState("");
   const brandsQuery = useQuery({
     queryKey: ["brands"],
     queryFn: configurationApi.getBrands,
@@ -44,6 +46,10 @@ export function ConfigurationScreen() {
     queryKey: ["brand-config-rows", resolvedBrandId],
     queryFn: () => configurationApi.getBrandConfigRows(resolvedBrandId),
     enabled: !!resolvedBrandId,
+  });
+  const runsQuery = useQuery({
+    queryKey: ["runs"],
+    queryFn: configurationApi.getRuns,
   });
 
   const brandForm = useForm<BrandSchema>({
@@ -74,12 +80,12 @@ export function ConfigurationScreen() {
     },
   });
   const countryCodeField = rowForm.register("countryCode");
-  const createKeywords = useWatch({ control: rowForm.control, name: "keywords" }) ?? [];
-  const editKeywords = useWatch({ control: editTaskForm.control, name: "keywords" }) ?? [];
 
-  function focusTaskForm() {
-    taskFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    taskCountryInputRef.current?.focus();
+  function parseKeywordsInput(value: string) {
+    return value
+      .split(",")
+      .map((keyword) => keyword.trim())
+      .filter(Boolean);
   }
 
   function selectBrand(brandId: string) {
@@ -107,6 +113,7 @@ export function ConfigurationScreen() {
         geolocation: "",
         keywords: [],
       });
+      setCreateKeywordsInput("");
       toast.success("Task added");
     },
   });
@@ -118,7 +125,18 @@ export function ConfigurationScreen() {
       await queryClient.invalidateQueries({ queryKey: ["brand-config-rows", resolvedBrandId] });
       await queryClient.invalidateQueries({ queryKey: ["dashboard-query-rows", resolvedBrandId] });
       setEditingTaskId(null);
+      setEditKeywordsInput("");
       toast.success("Task updated");
+    },
+  });
+
+  const addTaskToRunMutation = useMutation({
+    mutationFn: ({ rowId, runId }: { rowId: string; runId: string }) => configurationApi.addTaskToRun(rowId, runId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["runs"] });
+      setAssigningTaskId(null);
+      setSelectedRunId("");
+      toast.success("Task added to run");
     },
   });
 
@@ -131,16 +149,52 @@ export function ConfigurationScreen() {
   });
 
   const editingTask = rowsQuery.data?.find((row) => row.id === editingTaskId) ?? null;
+  const assigningTask = rowsQuery.data?.find((row) => row.id === assigningTaskId) ?? null;
 
-  if (brandsQuery.isLoading || rowsQuery.isLoading) {
+  if (brandsQuery.isLoading || rowsQuery.isLoading || runsQuery.isLoading) {
     return <LoadingState label="Loading brand setup and tasks..." />;
   }
 
-  if (brandsQuery.isError || rowsQuery.isError || !brandsQuery.data || !rowsQuery.data) {
+  if (brandsQuery.isError || rowsQuery.isError || runsQuery.isError || !brandsQuery.data || !runsQuery.data) {
     return <ErrorState onRetry={() => {
       brandsQuery.refetch();
       rowsQuery.refetch();
+      runsQuery.refetch();
     }} />;
+  }
+
+  if (!brandsQuery.data.length) {
+    return (
+      <PageShell>
+        <PageHeader
+          title="Configuration"
+          description="Manage brands and define tasks for each market, language, and keyword set."
+        />
+
+        <EmptyState
+          title="No brands yet"
+          description="Create your first brand to start adding tasks."
+          action={(
+            <Button onClick={() => setIsNewBrandOpen(true)}>
+              Create your first brand
+            </Button>
+          )}
+        />
+
+        <AddBrandModal
+          open={isNewBrandOpen}
+          onOpenChange={setIsNewBrandOpen}
+          onCreated={async (brand) => {
+            await queryClient.invalidateQueries({ queryKey: ["brands"] });
+            router.replace(`${pathname}?brandId=${brand.id}`);
+          }}
+        />
+      </PageShell>
+    );
+  }
+
+  if (!rowsQuery.data) {
+    return <ErrorState onRetry={() => rowsQuery.refetch()} />;
   }
 
   return (
@@ -182,7 +236,7 @@ export function ConfigurationScreen() {
             title="Add Task"
             description="Create a task for the selected brand with country, language, geolocation, and keywords."
           >
-            <div ref={taskFormRef} className="mb-4 rounded-2xl border border-white/8 bg-[#0a1321] p-4">
+            <div id="task-form" className="mb-4 rounded-2xl border border-white/8 bg-[#0a1321] p-4">
               <p className="text-sm font-medium text-white">
                 {brandsQuery.data.find((brand) => brand.id === resolvedBrandId)?.name}
               </p>
@@ -197,20 +251,13 @@ export function ConfigurationScreen() {
                 addRowMutation.mutate({
                   ...values,
                   geolocation: values.geolocation || null,
-                  keywords: values.keywords,
+                  keywords: parseKeywordsInput(createKeywordsInput),
                 })
               )}
             >
               <div className="space-y-2">
                 <Label>Country code</Label>
-                <Input
-                  {...countryCodeField}
-                  placeholder="CH"
-                  ref={(node) => {
-                    countryCodeField.ref(node);
-                    taskCountryInputRef.current = node;
-                  }}
-                />
+                <Input {...countryCodeField} placeholder="CH" />
               </div>
               <div className="space-y-2">
                 <Label>Country name</Label>
@@ -231,14 +278,13 @@ export function ConfigurationScreen() {
               <div className="space-y-2">
                 <Label>Keywords</Label>
                 <Input
-                  value={createKeywords.join(", ")}
-                  placeholder="brand name, brand review, brand scam"
-                  onChange={(event) =>
-                    rowForm.setValue(
-                      "keywords",
-                      event.target.value.split(",").map((keyword) => keyword.trim()).filter(Boolean),
-                    )
-                  }
+                  value={createKeywordsInput}
+                  placeholder="brand name, brand review, is brand legit"
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    setCreateKeywordsInput(nextValue);
+                    rowForm.setValue("keywords", parseKeywordsInput(nextValue), { shouldValidate: true });
+                  }}
                 />
               </div>
               <div className="md:col-span-2">
@@ -271,6 +317,22 @@ export function ConfigurationScreen() {
                       <TableCell>{row.keywords.join(", ")}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
+                          {row.runId ? (
+                            <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                              Assigned
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              aria-label="Add task to run"
+                              onClick={() => {
+                                setAssigningTaskId(row.id);
+                                setSelectedRunId(runsQuery.data?.[0]?.id ?? "");
+                              }}
+                            >
+                              <ArrowRight className="size-4 text-amber-300" />
+                            </button>
+                          )}
                           <button
                             type="button"
                             aria-label="Edit Task"
@@ -284,6 +346,7 @@ export function ConfigurationScreen() {
                                 geolocation: row.geolocation ?? "",
                                 keywords: row.keywords,
                               });
+                              setEditKeywordsInput(row.keywords.join(", "));
                             }}
                           >
                             <Pencil className="size-4 text-slate-300" />
@@ -300,8 +363,7 @@ export function ConfigurationScreen() {
             ) : (
               <EmptyState
                 title="No tasks yet"
-                description="Create a task for this brand to begin execution."
-                action={<Button onClick={focusTaskForm}>Create a task</Button>}
+                description="Add your first task above to begin."
               />
             )}
           </SectionCard>
@@ -333,7 +395,7 @@ export function ConfigurationScreen() {
                 values: {
                   ...values,
                   geolocation: values.geolocation || null,
-                  keywords: values.keywords,
+                  keywords: parseKeywordsInput(editKeywordsInput),
                 },
               });
             })}
@@ -362,13 +424,13 @@ export function ConfigurationScreen() {
               <div className="space-y-2">
                 <Label>Keywords</Label>
                 <Input
-                  value={editKeywords.join(", ")}
-                  onChange={(event) =>
-                    editTaskForm.setValue(
-                      "keywords",
-                      event.target.value.split(",").map((keyword) => keyword.trim()).filter(Boolean),
-                    )
-                  }
+                  value={editKeywordsInput}
+                  placeholder="brand name, brand review, is brand legit"
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    setEditKeywordsInput(nextValue);
+                    editTaskForm.setValue("keywords", parseKeywordsInput(nextValue), { shouldValidate: true });
+                  }}
                 />
               </div>
             </div>
@@ -382,6 +444,73 @@ export function ConfigurationScreen() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!assigningTask} onOpenChange={(open) => {
+        if (!open) {
+          setAssigningTaskId(null);
+          setSelectedRunId("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add task to run</DialogTitle>
+            <DialogDescription>
+              Choose an existing run to include this task.
+            </DialogDescription>
+          </DialogHeader>
+
+          {runsQuery.data.length ? (
+            <form
+              className="space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!assigningTaskId || !selectedRunId) {
+                  return;
+                }
+                addTaskToRunMutation.mutate({ rowId: assigningTaskId, runId: selectedRunId });
+              }}
+            >
+              <div className="space-y-2">
+                <Label>Run</Label>
+                <select
+                  className="flex h-10 w-full rounded-xl border border-white/10 bg-[#101a2c] px-3 py-2 text-sm text-white outline-none"
+                  value={selectedRunId}
+                  onChange={(event) => setSelectedRunId(event.target.value)}
+                >
+                  {runsQuery.data.map((run) => (
+                    <option key={run.id} value={run.id}>
+                      {run.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setAssigningTaskId(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={!selectedRunId || addTaskToRunMutation.isPending}>
+                  Add to Run
+                </Button>
+              </DialogFooter>
+            </form>
+          ) : (
+            <EmptyState
+              title="No runs yet"
+              description="Create a run before adding tasks."
+              action={(
+                <Button onClick={() => {
+                  setAssigningTaskId(null);
+                  router.push("/runs");
+                }}
+                >
+                  Create a new Run
+                </Button>
+              )}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

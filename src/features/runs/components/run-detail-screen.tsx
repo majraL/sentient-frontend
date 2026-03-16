@@ -76,6 +76,38 @@ export function RunDetailScreen({ runId }: { runId: string }) {
     }} />;
   }
 
+  if (!queryResults.data.length) {
+    return (
+      <PageShell>
+        <PageHeader
+          title={runQuery.data.name}
+          description="Inspect per-query execution status and review URL-level sentiment results."
+          actions={
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => toast.success("Export prepared")}>
+                <Download className="size-4" />
+                Export
+              </Button>
+              <Button onClick={() => rerunMutation.mutate()}>
+                <RefreshCcw className="size-4" />
+                Rerun
+              </Button>
+            </div>
+          }
+        />
+        <RunSummaryCard run={runQuery.data} />
+        <ErrorState
+          title="No run details yet"
+          description="This run is ready, but no execution results have been generated yet."
+          onRetry={() => {
+            runQuery.refetch();
+            queryResults.refetch();
+          }}
+        />
+      </PageShell>
+    );
+  }
+
   return (
     <PageShell>
       <PageHeader

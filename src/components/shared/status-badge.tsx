@@ -7,6 +7,8 @@ type StatusBadgeProps = {
 
 const variantMap: Record<string, "default" | "success" | "warning" | "danger" | "info" | "muted"> = {
   queued: "warning",
+  ready: "info",
+  scheduled: "warning",
   pending: "muted",
   searching: "info",
   analyzing: "warning",
@@ -22,6 +24,8 @@ const variantMap: Record<string, "default" | "success" | "warning" | "danger" | 
 
 const labels: Record<string, string> = {
   pending: "Pending",
+  ready: "Ready",
+  scheduled: "Scheduled",
   searching: "Searching",
   analyzing: "Analyzing",
   done: "Done",
@@ -37,6 +41,8 @@ const labels: Record<string, string> = {
 
 const icons = {
   pending: AlertTriangle,
+  ready: LoaderCircle,
+  scheduled: LoaderCircle,
   searching: Search,
   analyzing: Sparkles,
   done: Sparkles,

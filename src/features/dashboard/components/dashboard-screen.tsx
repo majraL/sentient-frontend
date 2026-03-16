@@ -17,6 +17,7 @@ import { ErrorState } from "@/components/shared/error-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { AppTable } from "@/components/shared/app-table";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { dashboardApi } from "@/features/dashboard/api/dashboard-api";
 import type { QueryRow } from "@/types/api";
@@ -116,11 +117,47 @@ export function DashboardScreen() {
     return <LoadingState label="Loading operational dashboard..." />;
   }
 
-  if (brandsQuery.isError || rowsQuery.isError || !brandsQuery.data || !rowsQuery.data) {
+  if (brandsQuery.isError || rowsQuery.isError || !brandsQuery.data) {
     return <ErrorState onRetry={() => {
       brandsQuery.refetch();
       rowsQuery.refetch();
     }} />;
+  }
+
+  if (!brandsQuery.data.length) {
+    return (
+      <PageShell>
+        <PageHeader
+          title="Dashboard"
+          description="Execute query rows by brand, monitor status changes, and inspect URL-level sentiment results."
+        />
+
+        <EmptyState
+          title="No brands yet"
+          description="Create your first brand to start configuring tasks and running sentiment analysis."
+          action={(
+            <Button onClick={() => setIsNewBrandOpen(true)}>
+              Create your first brand
+            </Button>
+          )}
+        />
+
+        <AddBrandModal
+          open={isNewBrandOpen}
+          onOpenChange={setIsNewBrandOpen}
+          onCreated={async (brand) => {
+            await queryClient.invalidateQueries({ queryKey: ["dashboard-brands"] });
+            await queryClient.invalidateQueries({ queryKey: ["brands"] });
+            setActiveBrandId(brand.id);
+            setActiveRowId(null);
+          }}
+        />
+      </PageShell>
+    );
+  }
+
+  if (!rowsQuery.data) {
+    return <ErrorState onRetry={() => rowsQuery.refetch()} />;
   }
 
   return (
@@ -206,7 +243,15 @@ export function DashboardScreen() {
             </Table>
           ) : (
             <div className="p-6">
-              <EmptyState title="No query rows found" description="Create tasks for this brand to begin execution." />
+              <EmptyState
+                title="No tasks yet"
+                description="Create a task for this brand to begin execution."
+                action={(
+                  <Button onClick={() => router.push(`/configuration?brandId=${resolvedBrandId}#task-form`)}>
+                    Create a task
+                  </Button>
+                )}
+              />
             </div>
           )}
         </AppTable>
@@ -222,7 +267,6 @@ export function DashboardScreen() {
           await queryClient.invalidateQueries({ queryKey: ["brands"] });
           setActiveBrandId(brand.id);
           setActiveRowId(null);
-          router.push(`/configuration?brandId=${brand.id}`);
         }}
       />
     </PageShell>

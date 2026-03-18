@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink, Pencil } from "lucide-react";
+import { toast } from "sonner";
 import { PageShell } from "@/components/shared/page-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingState } from "@/components/shared/loading-state";
@@ -145,7 +146,7 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
           ) : null
         }
         actions={
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-3">
             <StatusBadge status={run.status} />
             <div className="rounded-xl border border-white/8 bg-[#0a1321] px-3 py-2 text-xs text-slate-300">
               Started: {formatDateTime(run.startedAt)}
@@ -153,6 +154,21 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
             <div className="rounded-xl border border-white/8 bg-[#0a1321] px-3 py-2 text-xs text-slate-300">
               Finished: {run.finishedAt ? formatDateTime(run.finishedAt) : "In progress"}
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => toast.success("Edit mode coming soon")}
+            >
+              <Pencil className="size-4" />
+              Edit
+            </Button>
+            <Button
+              type="button"
+              onClick={() => toast.success("Download coming soon")}
+            >
+              <Download className="size-4" />
+              Download report
+            </Button>
           </div>
         }
       />

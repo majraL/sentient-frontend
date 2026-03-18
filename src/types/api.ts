@@ -107,6 +107,28 @@ export type RunQueryResult = {
   resultCount: number;
 };
 
+export type RunResultTaskGroup = {
+  id: EntityId;
+  runId: string;
+  queryRowId: string;
+  keyword: string;
+  brandId: string;
+  brandName: string;
+  countryCode: string;
+  countryName: string;
+  languageCode: string;
+  languageName: string;
+  status: QueryStatus;
+  score: number;
+  resultCount: number;
+  urls: QueryResultUrl[];
+  summary: {
+    positive: number;
+    negative: number;
+    neutral: number;
+  };
+};
+
 export type AccountProfile = {
   id: EntityId;
   tenantId: string;

@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Download, RefreshCcw } from "lucide-react";
+import { ArrowLeft, Download, RefreshCcw } from "lucide-react";
 import { PageShell } from "@/components/shared/page-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { ProcessingCellOverlay } from "@/components/shared/processing-cell-overlay";
@@ -14,6 +15,13 @@ import { ErrorState } from "@/components/shared/error-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { AppTable } from "@/components/shared/app-table";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { runsApi } from "@/features/runs/api/runs-api";
 import type { QueryRow } from "@/types/api";
@@ -24,6 +32,9 @@ function isProcessingStatus(status: QueryRow["status"]) {
 
 export function RunDetailScreen({ runId }: { runId: string }) {
   const [activeQueryRow, setActiveQueryRow] = useState<QueryRow | null>(null);
+  const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
+  const [isDescriptionOverflowing, setIsDescriptionOverflowing] = useState(false);
+  const descriptionRef = useRef<HTMLParagraphElement | null>(null);
   const runQuery = useQuery({
     queryKey: ["run", runId],
     queryFn: () => runsApi.getRunById(runId),
@@ -65,6 +76,23 @@ export function RunDetailScreen({ runId }: { runId: string }) {
     onSuccess: () => toast.success("Rerun queued from current brand context"),
   });
 
+  useEffect(() => {
+    function measureDescription() {
+      if (!descriptionRef.current) {
+        setIsDescriptionOverflowing(false);
+        return;
+      }
+
+      setIsDescriptionOverflowing(
+        descriptionRef.current.scrollHeight > descriptionRef.current.clientHeight + 1,
+      );
+    }
+
+    measureDescription();
+    window.addEventListener("resize", measureDescription);
+    return () => window.removeEventListener("resize", measureDescription);
+  }, [runQuery.data?.description]);
+
   if (runQuery.isLoading || queryResults.isLoading) {
     return <LoadingState label="Loading run detail..." />;
   }
@@ -79,9 +107,35 @@ export function RunDetailScreen({ runId }: { runId: string }) {
   if (!queryResults.data.length) {
     return (
       <PageShell>
+        <Link
+          href="/runs"
+          className="inline-flex w-fit items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white"
+        >
+          <ArrowLeft className="size-4" />
+          Back to Runs
+        </Link>
         <PageHeader
           title={runQuery.data.name}
-          description="Inspect per-query execution status and review URL-level sentiment results."
+          description={
+            runQuery.data.description ? (
+              <div className="max-w-3xl">
+                <p ref={descriptionRef} className="line-clamp-5 whitespace-pre-wrap text-slate-400">
+                  {runQuery.data.description}
+                </p>
+                {isDescriptionOverflowing ? (
+                  <button
+                    type="button"
+                    className="mt-2 text-sm font-medium text-[#ffb56e] transition-colors hover:text-[#ffc78f]"
+                    onClick={() => setIsDescriptionOpen(true)}
+                  >
+                    Read all
+                  </button>
+                ) : null}
+              </div>
+            ) : (
+              "Inspect per-query execution status and review URL-level sentiment results."
+            )
+          }
           actions={
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => toast.success("Export prepared")}>
@@ -104,18 +158,61 @@ export function RunDetailScreen({ runId }: { runId: string }) {
             queryResults.refetch();
           }}
         />
+        <Dialog open={isDescriptionOpen} onOpenChange={setIsDescriptionOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Run description</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-[60vh] overflow-y-auto rounded-xl border border-white/8 bg-[#0a1321] p-4">
+              <p className="whitespace-pre-wrap text-sm leading-6 text-slate-300">
+                {runQuery.data.description}
+              </p>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsDescriptionOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </PageShell>
     );
   }
 
   return (
     <PageShell>
-      <PageHeader
-        title={runQuery.data.name}
-        description="Inspect per-query execution status and review URL-level sentiment results."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => toast.success("Export prepared")}>
+      <Link
+        href="/runs"
+        className="inline-flex w-fit items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white"
+      >
+        <ArrowLeft className="size-4" />
+        Back to Runs
+      </Link>
+        <PageHeader
+          title={runQuery.data.name}
+          description={
+            runQuery.data.description ? (
+              <div className="max-w-3xl">
+                <p ref={descriptionRef} className="line-clamp-5 whitespace-pre-wrap text-slate-400">
+                  {runQuery.data.description}
+                </p>
+                {isDescriptionOverflowing ? (
+                  <button
+                    type="button"
+                    className="mt-2 text-sm font-medium text-[#ffb56e] transition-colors hover:text-[#ffc78f]"
+                    onClick={() => setIsDescriptionOpen(true)}
+                  >
+                    Read all
+                  </button>
+                ) : null}
+              </div>
+            ) : (
+              "Inspect per-query execution status and review URL-level sentiment results."
+            )
+          }
+          actions={
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => toast.success("Export prepared")}>
               <Download className="size-4" />
               Export
             </Button>
@@ -187,6 +284,24 @@ export function RunDetailScreen({ runId }: { runId: string }) {
 
         <QueryResultPanel row={resolvedActiveQueryRow} results={urlResults.data ?? []} />
       </section>
+
+      <Dialog open={isDescriptionOpen} onOpenChange={setIsDescriptionOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Run description</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto rounded-xl border border-white/8 bg-[#0a1321] p-4">
+            <p className="whitespace-pre-wrap text-sm leading-6 text-slate-300">
+              {runQuery.data.description}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsDescriptionOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }

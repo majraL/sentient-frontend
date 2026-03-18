@@ -6,11 +6,7 @@ import { formatDateTime } from "@/lib/utils/dates";
 export function RunSummaryCard({ run }: { run: Run }) {
   return (
     <Card>
-      <CardContent className="grid gap-4 p-5 md:grid-cols-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Run</p>
-          <p className="mt-2 font-medium text-white">{run.name}</p>
-        </div>
+      <CardContent className="grid gap-4 p-5 md:grid-cols-3">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Brand</p>
           <p className="mt-2 text-slate-200">{run.brandName}</p>

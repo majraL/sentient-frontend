@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Cog, LayoutDashboard, Settings2, UserCircle2, PlayCircle, PanelsTopLeft } from "lucide-react";
+import { BarChart3, Cog, LayoutDashboard, Search, Settings2, UserCircle2, PlayCircle, PanelsTopLeft } from "lucide-react";
 import { APP_NAME } from "@/lib/constants/app";
 import { cn } from "@/lib/utils/cn";
 import type { SessionUser } from "@/types/auth";
@@ -22,6 +22,7 @@ const icons = {
   Dashboard: LayoutDashboard,
   Configuration: PanelsTopLeft,
   Runs: PlayCircle,
+  Results: Search,
   Account: UserCircle2,
   Clients: Cog,
   Settings: Settings2,

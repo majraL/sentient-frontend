@@ -4,9 +4,9 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
-import { ArrowRight, Pencil, Trash2 } from "lucide-react";
+import { ArrowRight, Pencil, Trash2, X } from "lucide-react";
 import { AddBrandModal } from "@/components/shared/add-brand-modal";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageShell } from "@/components/shared/page-shell";
@@ -15,6 +15,7 @@ import { BrandTabs } from "@/components/shared/brand-tabs";
 import { SectionCard } from "@/components/shared/section-card";
 import { LoadingState } from "@/components/shared/loading-state";
 import { ErrorState } from "@/components/shared/error-state";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -80,12 +81,53 @@ export function ConfigurationScreen() {
     },
   });
   const countryCodeField = rowForm.register("countryCode");
+  const createKeywords = useWatch({ control: rowForm.control, name: "keywords" }) ?? [];
+  const editKeywords = useWatch({ control: editTaskForm.control, name: "keywords" }) ?? [];
 
-  function parseKeywordsInput(value: string) {
-    return value
-      .split(",")
-      .map((keyword) => keyword.trim())
-      .filter(Boolean);
+  function normalizeKeywords(keywords: string[]) {
+    return Array.from(new Set(keywords.map((keyword) => keyword.trim()).filter(Boolean)));
+  }
+
+  function renderKeywordBadges(keywords: string[]) {
+    const normalizedKeywords = normalizeKeywords(keywords);
+
+    return (
+      <div className="flex flex-wrap gap-2">
+        {normalizedKeywords.map((keyword) => (
+          <Badge key={keyword}>{keyword}</Badge>
+        ))}
+      </div>
+    );
+  }
+
+  function finalizeKeywords(committedKeywords: string[], inputValue: string) {
+    return normalizeKeywords([
+      ...committedKeywords,
+      ...inputValue.split(",").map((keyword) => keyword.trim()).filter(Boolean),
+    ]);
+  }
+
+  function buildKeywordInputState(currentKeywords: string[], inputValue: string) {
+    const segments = inputValue.split(", ");
+    if (segments.length === 1) {
+      return {
+        keywords: currentKeywords,
+        inputValue,
+      };
+    }
+
+    return {
+      keywords: normalizeKeywords([...currentKeywords, ...segments.slice(0, -1)]),
+      inputValue: segments.at(-1) ?? "",
+    };
+  }
+
+  function removeKeyword(
+    keywords: string[],
+    setKeywords: (keywords: string[]) => void,
+    keywordToRemove: string,
+  ) {
+    setKeywords(keywords.filter((keyword) => keyword !== keywordToRemove));
   }
 
   function selectBrand(brandId: string) {
@@ -251,7 +293,7 @@ export function ConfigurationScreen() {
                 addRowMutation.mutate({
                   ...values,
                   geolocation: values.geolocation || null,
-                  keywords: parseKeywordsInput(createKeywordsInput),
+                  keywords: finalizeKeywords(createKeywords, createKeywordsInput),
                 })
               )}
             >
@@ -277,15 +319,39 @@ export function ConfigurationScreen() {
               </div>
               <div className="space-y-2">
                 <Label>Keywords</Label>
-                <Input
-                  value={createKeywordsInput}
-                  placeholder="brand name, brand review, is brand legit"
-                  onChange={(event) => {
-                    const nextValue = event.target.value;
-                    setCreateKeywordsInput(nextValue);
-                    rowForm.setValue("keywords", parseKeywordsInput(nextValue), { shouldValidate: true });
-                  }}
-                />
+                <div className="space-y-3">
+                  {createKeywords.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {createKeywords.map((keyword) => (
+                        <Badge key={keyword} className="gap-1">
+                          <span>{keyword}</span>
+                          <button
+                            type="button"
+                            className="rounded-full hover:text-white"
+                            onClick={() =>
+                              removeKeyword(
+                                createKeywords,
+                                (keywords) => rowForm.setValue("keywords", keywords, { shouldValidate: true }),
+                                keyword,
+                              )
+                            }
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                  <Input
+                    value={createKeywordsInput}
+                    placeholder="brand name, brand review, is brand legit"
+                    onChange={(event) => {
+                      const nextState = buildKeywordInputState(createKeywords, event.target.value);
+                      setCreateKeywordsInput(nextState.inputValue);
+                      rowForm.setValue("keywords", nextState.keywords, { shouldValidate: true });
+                    }}
+                  />
+                </div>
               </div>
               <div className="md:col-span-2">
                 <Button type="submit">Add Task</Button>
@@ -314,7 +380,7 @@ export function ConfigurationScreen() {
                       <TableCell>{row.countryName}</TableCell>
                       <TableCell>{row.languageName}</TableCell>
                       <TableCell>{row.geolocation ?? "-"}</TableCell>
-                      <TableCell>{row.keywords.join(", ")}</TableCell>
+                      <TableCell>{renderKeywordBadges(row.keywords)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {row.runId ? (
@@ -346,7 +412,7 @@ export function ConfigurationScreen() {
                                 geolocation: row.geolocation ?? "",
                                 keywords: row.keywords,
                               });
-                              setEditKeywordsInput(row.keywords.join(", "));
+                              setEditKeywordsInput("");
                             }}
                           >
                             <Pencil className="size-4 text-slate-300" />
@@ -395,7 +461,7 @@ export function ConfigurationScreen() {
                 values: {
                   ...values,
                   geolocation: values.geolocation || null,
-                  keywords: parseKeywordsInput(editKeywordsInput),
+                  keywords: finalizeKeywords(editKeywords, editKeywordsInput),
                 },
               });
             })}
@@ -423,15 +489,39 @@ export function ConfigurationScreen() {
               </div>
               <div className="space-y-2">
                 <Label>Keywords</Label>
-                <Input
-                  value={editKeywordsInput}
-                  placeholder="brand name, brand review, is brand legit"
-                  onChange={(event) => {
-                    const nextValue = event.target.value;
-                    setEditKeywordsInput(nextValue);
-                    editTaskForm.setValue("keywords", parseKeywordsInput(nextValue), { shouldValidate: true });
-                  }}
-                />
+                <div className="space-y-3">
+                  {editKeywords.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {editKeywords.map((keyword) => (
+                        <Badge key={keyword} className="gap-1">
+                          <span>{keyword}</span>
+                          <button
+                            type="button"
+                            className="rounded-full hover:text-white"
+                            onClick={() =>
+                              removeKeyword(
+                                editKeywords,
+                                (keywords) => editTaskForm.setValue("keywords", keywords, { shouldValidate: true }),
+                                keyword,
+                              )
+                            }
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                  <Input
+                    value={editKeywordsInput}
+                    placeholder="brand name, brand review, is brand legit"
+                    onChange={(event) => {
+                      const nextState = buildKeywordInputState(editKeywords, event.target.value);
+                      setEditKeywordsInput(nextState.inputValue);
+                      editTaskForm.setValue("keywords", nextState.keywords, { shouldValidate: true });
+                    }}
+                  />
+                </div>
               </div>
             </div>
 

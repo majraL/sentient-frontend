@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -82,6 +83,7 @@ export function CreateRunWizardModal({ open, onOpenChange }: CreateRunWizardModa
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["runs"] });
+      await queryClient.invalidateQueries({ queryKey: ["run-query-results"] });
       await queryClient.invalidateQueries({ queryKey: ["available-run-tasks"] });
       await queryClient.invalidateQueries({ queryKey: ["run-task-pool-summary"] });
       await queryClient.invalidateQueries({ queryKey: ["brand-config-rows"] });
@@ -134,6 +136,19 @@ export function CreateRunWizardModal({ open, onOpenChange }: CreateRunWizardModa
   const canProceedToReview =
     selectedTaskIds.length > 0 &&
     (executionMode === "now" || (Boolean(startDate) && Boolean(startTime)));
+
+  function renderKeywordBadges(keywords: string[]) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        {keywords
+          .map((keyword) => keyword.trim())
+          .filter(Boolean)
+          .map((keyword) => (
+            <Badge key={keyword}>{keyword}</Badge>
+          ))}
+      </div>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -248,7 +263,7 @@ export function CreateRunWizardModal({ open, onOpenChange }: CreateRunWizardModa
                                   />
                                   <span className="w-12 text-slate-400">{task.countryCode}</span>
                                   <span className="w-24 text-slate-300">{task.languageName}</span>
-                                  <span className="min-w-0 flex-1 truncate">{task.keywords.join(", ")}</span>
+                                  <div className="min-w-0 flex-1">{renderKeywordBadges(task.keywords)}</div>
                                 </label>
                               ))}
                             </div>
@@ -381,7 +396,12 @@ export function CreateRunWizardModal({ open, onOpenChange }: CreateRunWizardModa
                       <div className="mt-3 space-y-2">
                         {group.tasks.map((task) => (
                           <div key={task.id} className="rounded-xl border border-white/6 bg-white/[0.02] px-3 py-3 text-sm text-slate-200">
-                            {task.countryCode} | {task.languageName} | {task.keywords.join(", ")}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span>{task.countryCode}</span>
+                              <span className="text-slate-500">|</span>
+                              <span>{task.languageName}</span>
+                            </div>
+                            <div className="mt-3">{renderKeywordBadges(task.keywords)}</div>
                           </div>
                         ))}
                       </div>

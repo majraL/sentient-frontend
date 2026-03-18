@@ -4,10 +4,10 @@ import {
   getAvailableRunTasks,
   getRunById,
   getRunQueryResults,
+  getRunResultTasks,
   getRunResultUrls,
   getRunTaskPoolSummary,
   getRuns,
-  runReadyRun,
   runSelectedQueries,
   startScheduledRunNow,
 } from "@/lib/api/mock-db";
@@ -20,9 +20,9 @@ export const runsApi = {
   createRun: (payload: CreateRunPayload) => mockRequest(() => createRun(payload)),
   getRunById: (id: string) => mockRequest(() => getRunById(id)),
   getRunQueryResults: (runId: string) => mockRequest(() => getRunQueryResults(runId)),
+  getRunResultTasks: (runId: string) => mockRequest(() => getRunResultTasks(runId)),
   getRunResultUrls: (runId: string, queryRowId: string) =>
     mockRequest(() => getRunResultUrls(runId, queryRowId)),
   startNow: (runId: string) => mockRequest(() => startScheduledRunNow(runId)),
-  run: (runId: string) => mockRequest(() => runReadyRun(runId)),
   rerun: (brandId: string) => mockRequest(() => runSelectedQueries(brandId)),
 };

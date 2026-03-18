@@ -29,6 +29,7 @@ import type {
   QueryRow,
   Run,
   RunQueryResult,
+  RunResultTaskGroup,
   RunTaskOption,
   SystemHealth,
 } from "@/types/api";
@@ -446,9 +447,45 @@ export async function populateDemoData() {
   clearTenantDataCollections();
 
   const now = new Date();
+  const twoDaysAgo = new Date(now.getTime() - 1000 * 60 * 60 * 48).toISOString();
+  const yesterday = new Date(now.getTime() - 1000 * 60 * 60 * 26).toISOString();
+  const twelveHoursAgo = new Date(now.getTime() - 1000 * 60 * 60 * 12).toISOString();
   const readyCreatedAt = new Date(now.getTime() - 1000 * 60 * 45).toISOString();
   const scheduledFor = new Date(now.getTime() + 1000 * 60 * 60 * 18).toISOString();
   const scheduledCreatedAt = new Date(now.getTime() - 1000 * 60 * 10).toISOString();
+
+  type DemoTaskDefinition = {
+    configId: string;
+    queryId: string;
+    brandId: string;
+    countryCode: string;
+    countryName: string;
+    languageCode: string;
+    languageName: string;
+    geolocation: string;
+    keyword: string;
+    runId: string | null;
+    status: QueryRow["status"];
+    score: number;
+    selected: boolean;
+    createdAt: string;
+  };
+
+  type DemoRunDefinition = {
+    id: string;
+    name: string;
+    description: string;
+    status: Run["status"];
+    createdAt: string;
+    executionMode: Run["executionMode"];
+    scheduledFor: string | null;
+    brandId: string;
+    brandName: string;
+    startedAt: string;
+    finishedAt: string | null;
+  };
+
+  type ResultProfile = "mostly_positive" | "mixed" | "mostly_negative";
 
   const demoBrands: Brand[] = [
     {
@@ -485,536 +522,560 @@ export async function populateDemoData() {
     },
   ];
 
-  const demoTasks: BrandConfigRow[] = [
+  const brandNamesById = new Map(demoBrands.map((brand) => [brand.id, brand.name]));
+
+  const taskDefinitions: DemoTaskDefinition[] = [
     {
-      id: "cfg_velora_name",
+      configId: "cfg_velora_review",
+      queryId: "qry_velora_review",
       brandId: "brand_velora",
       countryCode: "CH",
       countryName: "Switzerland",
       languageCode: "en",
       languageName: "English",
       geolocation: "Zurich",
-      keywords: ["velora skin"],
-      runId: null,
-      createdAt: readyCreatedAt,
-      updatedAt: readyCreatedAt,
-    },
-    {
-      id: "cfg_velora_review",
-      brandId: "brand_velora",
-      countryCode: "CH",
-      countryName: "Switzerland",
-      languageCode: "en",
-      languageName: "English",
-      geolocation: "Zurich",
-      keywords: ["velora skin review"],
+      keyword: "velora skin review",
       runId: "run_weekly_reputation",
-      createdAt: readyCreatedAt,
-      updatedAt: readyCreatedAt,
+      status: "done",
+      score: 0.64,
+      selected: false,
+      createdAt: twoDaysAgo,
     },
     {
-      id: "cfg_velora_scam",
-      brandId: "brand_velora",
-      countryCode: "CH",
-      countryName: "Switzerland",
-      languageCode: "en",
-      languageName: "English",
-      geolocation: "Geneva",
-      keywords: ["velora skin scam"],
-      runId: null,
-      createdAt: readyCreatedAt,
-      updatedAt: readyCreatedAt,
-    },
-    {
-      id: "cfg_lunoro_name",
+      configId: "cfg_lunoro_review_ms",
+      queryId: "qry_lunoro_review_ms",
       brandId: "brand_lunoro",
       countryCode: "MY",
       countryName: "Malaysia",
       languageCode: "ms",
       languageName: "Malay",
       geolocation: "Kuala Lumpur",
-      keywords: ["lunoro travel"],
+      keyword: "lunoro travel review",
       runId: "run_weekly_reputation",
-      createdAt: readyCreatedAt,
-      updatedAt: readyCreatedAt,
+      status: "done",
+      score: 0.38,
+      selected: false,
+      createdAt: twoDaysAgo,
     },
     {
-      id: "cfg_lunoro_review",
-      brandId: "brand_lunoro",
-      countryCode: "MY",
-      countryName: "Malaysia",
-      languageCode: "en",
-      languageName: "English",
-      geolocation: "Kuala Lumpur",
-      keywords: ["lunoro travel review"],
-      runId: null,
-      createdAt: readyCreatedAt,
-      updatedAt: readyCreatedAt,
-    },
-    {
-      id: "cfg_lunoro_scam",
-      brandId: "brand_lunoro",
-      countryCode: "MY",
-      countryName: "Malaysia",
-      languageCode: "en",
-      languageName: "English",
-      geolocation: "Penang",
-      keywords: ["lunoro travel scam"],
-      runId: "run_market_sentiment",
-      createdAt: scheduledCreatedAt,
-      updatedAt: scheduledCreatedAt,
-    },
-    {
-      id: "cfg_klyra_name",
+      configId: "cfg_klyra_legit_de",
+      queryId: "qry_klyra_legit_de",
       brandId: "brand_klyra",
-      countryCode: "CH",
-      countryName: "Switzerland",
-      languageCode: "en",
-      languageName: "English",
-      geolocation: "Basel",
-      keywords: ["klyra home"],
-      runId: null,
-      createdAt: readyCreatedAt,
-      updatedAt: readyCreatedAt,
-    },
-    {
-      id: "cfg_klyra_review",
-      brandId: "brand_klyra",
-      countryCode: "CH",
-      countryName: "Switzerland",
-      languageCode: "en",
-      languageName: "English",
-      geolocation: "Basel",
-      keywords: ["klyra home review"],
+      countryCode: "DE",
+      countryName: "Germany",
+      languageCode: "de",
+      languageName: "German",
+      geolocation: "Berlin",
+      keyword: "klyra home legit",
       runId: "run_weekly_reputation",
-      createdAt: readyCreatedAt,
-      updatedAt: readyCreatedAt,
+      status: "done",
+      score: 0.46,
+      selected: false,
+      createdAt: twoDaysAgo,
     },
     {
-      id: "cfg_klyra_scam",
-      brandId: "brand_klyra",
-      countryCode: "CH",
-      countryName: "Switzerland",
-      languageCode: "en",
-      languageName: "English",
-      geolocation: "Bern",
-      keywords: ["klyra home scam"],
-      runId: null,
-      createdAt: readyCreatedAt,
-      updatedAt: readyCreatedAt,
-    },
-    {
-      id: "cfg_novu_name",
+      configId: "cfg_novu_review_en",
+      queryId: "qry_novu_review_en",
       brandId: "brand_novu",
       countryCode: "IN",
       countryName: "India",
       languageCode: "en",
       languageName: "English",
       geolocation: "Mumbai",
-      keywords: ["novu mobile"],
-      runId: "run_weekly_reputation",
-      createdAt: readyCreatedAt,
-      updatedAt: readyCreatedAt,
+      keyword: "novu mobile review",
+      runId: "run_market_sentiment",
+      status: "done",
+      score: 0.29,
+      selected: false,
+      createdAt: yesterday,
     },
     {
-      id: "cfg_novu_review",
-      brandId: "brand_novu",
-      countryCode: "IN",
-      countryName: "India",
+      configId: "cfg_lunoro_complaints_sg",
+      queryId: "qry_lunoro_complaints_sg",
+      brandId: "brand_lunoro",
+      countryCode: "SG",
+      countryName: "Singapore",
       languageCode: "en",
       languageName: "English",
-      geolocation: "Mumbai",
-      keywords: ["novu mobile review"],
+      geolocation: "Singapore",
+      keyword: "lunoro travel complaints",
       runId: "run_market_sentiment",
-      createdAt: scheduledCreatedAt,
-      updatedAt: scheduledCreatedAt,
+      status: "done",
+      score: -0.18,
+      selected: false,
+      createdAt: yesterday,
     },
     {
-      id: "cfg_novu_scam",
+      configId: "cfg_velora_legit_fr",
+      queryId: "qry_velora_legit_fr",
+      brandId: "brand_velora",
+      countryCode: "FR",
+      countryName: "France",
+      languageCode: "fr",
+      languageName: "French",
+      geolocation: "Paris",
+      keyword: "velora skin legit",
+      runId: "run_market_sentiment",
+      status: "done",
+      score: 0.22,
+      selected: false,
+      createdAt: yesterday,
+    },
+    {
+      configId: "cfg_klyra_scam_de",
+      queryId: "qry_klyra_scam_de",
+      brandId: "brand_klyra",
+      countryCode: "DE",
+      countryName: "Germany",
+      languageCode: "de",
+      languageName: "German",
+      geolocation: "Munich",
+      keyword: "klyra home scam",
+      runId: "run_brand_risk_audit",
+      status: "done",
+      score: -0.54,
+      selected: false,
+      createdAt: twelveHoursAgo,
+    },
+    {
+      configId: "cfg_novu_scam_hi",
+      queryId: "qry_novu_scam_hi",
       brandId: "brand_novu",
       countryCode: "IN",
       countryName: "India",
       languageCode: "hi",
       languageName: "Hindi",
       geolocation: "Delhi",
-      keywords: ["novu mobile scam"],
-      runId: null,
-      createdAt: scheduledCreatedAt,
-      updatedAt: scheduledCreatedAt,
-    },
-  ];
-
-  const demoQueryRows: QueryRow[] = [
-    {
-      id: "qry_velora_name",
-      tenantId: currentTenantId,
-      brandId: "brand_velora",
-      brandName: "Velora Skin",
-      countryCode: "CH",
-      countryName: "Switzerland",
-      languageCode: "en",
-      languageName: "English",
-      keyword: "velora skin",
-      status: "done",
-      selected: true,
-      score: 0.74,
-      runId: null,
-    },
-    {
-      id: "qry_velora_review",
-      tenantId: currentTenantId,
-      brandId: "brand_velora",
-      brandName: "Velora Skin",
-      countryCode: "CH",
-      countryName: "Switzerland",
-      languageCode: "en",
-      languageName: "English",
-      keyword: "velora skin review",
-      status: "pending",
-      selected: false,
-      score: 0,
-      runId: "run_weekly_reputation",
-    },
-    {
-      id: "qry_velora_scam",
-      tenantId: currentTenantId,
-      brandId: "brand_velora",
-      brandName: "Velora Skin",
-      countryCode: "CH",
-      countryName: "Switzerland",
-      languageCode: "en",
-      languageName: "English",
-      keyword: "velora skin scam",
-      status: "pending",
-      selected: true,
-      score: 0,
-      runId: null,
-    },
-    {
-      id: "qry_lunoro_name",
-      tenantId: currentTenantId,
-      brandId: "brand_lunoro",
-      brandName: "Lunoro Travel",
-      countryCode: "MY",
-      countryName: "Malaysia",
-      languageCode: "ms",
-      languageName: "Malay",
-      keyword: "lunoro travel",
-      status: "pending",
-      selected: false,
-      score: 0,
-      runId: "run_weekly_reputation",
-    },
-    {
-      id: "qry_lunoro_review",
-      tenantId: currentTenantId,
-      brandId: "brand_lunoro",
-      brandName: "Lunoro Travel",
-      countryCode: "MY",
-      countryName: "Malaysia",
-      languageCode: "en",
-      languageName: "English",
-      keyword: "lunoro travel review",
-      status: "done",
-      selected: true,
-      score: -0.22,
-      runId: null,
-    },
-    {
-      id: "qry_lunoro_scam",
-      tenantId: currentTenantId,
-      brandId: "brand_lunoro",
-      brandName: "Lunoro Travel",
-      countryCode: "MY",
-      countryName: "Malaysia",
-      languageCode: "en",
-      languageName: "English",
-      keyword: "lunoro travel scam",
-      status: "pending",
-      selected: false,
-      score: 0,
-      runId: "run_market_sentiment",
-    },
-    {
-      id: "qry_klyra_name",
-      tenantId: currentTenantId,
-      brandId: "brand_klyra",
-      brandName: "Klyra Home",
-      countryCode: "CH",
-      countryName: "Switzerland",
-      languageCode: "en",
-      languageName: "English",
-      keyword: "klyra home",
-      status: "pending",
-      selected: false,
-      score: 0,
-      runId: null,
-    },
-    {
-      id: "qry_klyra_review",
-      tenantId: currentTenantId,
-      brandId: "brand_klyra",
-      brandName: "Klyra Home",
-      countryCode: "CH",
-      countryName: "Switzerland",
-      languageCode: "en",
-      languageName: "English",
-      keyword: "klyra home review",
-      status: "pending",
-      selected: false,
-      score: 0,
-      runId: "run_weekly_reputation",
-    },
-    {
-      id: "qry_klyra_scam",
-      tenantId: currentTenantId,
-      brandId: "brand_klyra",
-      brandName: "Klyra Home",
-      countryCode: "CH",
-      countryName: "Switzerland",
-      languageCode: "en",
-      languageName: "English",
-      keyword: "klyra home scam",
-      status: "pending",
-      selected: true,
-      score: 0,
-      runId: null,
-    },
-    {
-      id: "qry_novu_name",
-      tenantId: currentTenantId,
-      brandId: "brand_novu",
-      brandName: "Novu Mobile",
-      countryCode: "IN",
-      countryName: "India",
-      languageCode: "en",
-      languageName: "English",
-      keyword: "novu mobile",
-      status: "pending",
-      selected: false,
-      score: 0,
-      runId: "run_weekly_reputation",
-    },
-    {
-      id: "qry_novu_review",
-      tenantId: currentTenantId,
-      brandId: "brand_novu",
-      brandName: "Novu Mobile",
-      countryCode: "IN",
-      countryName: "India",
-      languageCode: "en",
-      languageName: "English",
-      keyword: "novu mobile review",
-      status: "pending",
-      selected: false,
-      score: 0,
-      runId: "run_market_sentiment",
-    },
-    {
-      id: "qry_novu_scam",
-      tenantId: currentTenantId,
-      brandId: "brand_novu",
-      brandName: "Novu Mobile",
-      countryCode: "IN",
-      countryName: "India",
-      languageCode: "hi",
-      languageName: "Hindi",
       keyword: "novu mobile scam",
+      runId: "run_brand_risk_audit",
       status: "done",
-      selected: true,
-      score: -0.31,
+      score: -0.49,
+      selected: false,
+      createdAt: twelveHoursAgo,
+    },
+    {
+      configId: "cfg_velora_complaints_uk",
+      queryId: "qry_velora_complaints_uk",
+      brandId: "brand_velora",
+      countryCode: "GB",
+      countryName: "United Kingdom",
+      languageCode: "en",
+      languageName: "English",
+      geolocation: "London",
+      keyword: "velora skin complaints",
+      runId: "run_brand_risk_audit",
+      status: "done",
+      score: -0.26,
+      selected: false,
+      createdAt: twelveHoursAgo,
+    },
+    {
+      configId: "cfg_lunoro_scam_en",
+      queryId: "qry_lunoro_scam_en",
+      brandId: "brand_lunoro",
+      countryCode: "MY",
+      countryName: "Malaysia",
+      languageCode: "en",
+      languageName: "English",
+      geolocation: "Penang",
+      keyword: "lunoro travel scam",
+      runId: "run_live_watch",
+      status: "searching",
+      score: 0,
+      selected: false,
+      createdAt: scheduledCreatedAt,
+    },
+    {
+      configId: "cfg_klyra_review_ch",
+      queryId: "qry_klyra_review_ch",
+      brandId: "brand_klyra",
+      countryCode: "CH",
+      countryName: "Switzerland",
+      languageCode: "en",
+      languageName: "English",
+      geolocation: "Basel",
+      keyword: "klyra home review",
+      runId: "run_live_watch",
+      status: "searching",
+      score: 0,
+      selected: false,
+      createdAt: readyCreatedAt,
+    },
+    {
+      configId: "cfg_novu_legit_en",
+      queryId: "qry_novu_legit_en",
+      brandId: "brand_novu",
+      countryCode: "IN",
+      countryName: "India",
+      languageCode: "en",
+      languageName: "English",
+      geolocation: "Bengaluru",
+      keyword: "novu mobile legit",
+      runId: "run_upcoming_regional_scan",
+      status: "pending",
+      score: 0,
+      selected: false,
+      createdAt: scheduledCreatedAt,
+    },
+    {
+      configId: "cfg_velora_before_after",
+      queryId: "qry_velora_before_after",
+      brandId: "brand_velora",
+      countryCode: "CH",
+      countryName: "Switzerland",
+      languageCode: "en",
+      languageName: "English",
+      geolocation: "Geneva",
+      keyword: "velora skin before and after",
       runId: null,
+      status: "pending",
+      score: 0,
+      selected: true,
+      createdAt: readyCreatedAt,
+    },
+    {
+      configId: "cfg_lunoro_support_th",
+      queryId: "qry_lunoro_support_th",
+      brandId: "brand_lunoro",
+      countryCode: "TH",
+      countryName: "Thailand",
+      languageCode: "en",
+      languageName: "English",
+      geolocation: "Bangkok",
+      keyword: "lunoro travel support",
+      runId: null,
+      status: "pending",
+      score: 0,
+      selected: false,
+      createdAt: readyCreatedAt,
+    },
+    {
+      configId: "cfg_novu_warranty_en",
+      queryId: "qry_novu_warranty_en",
+      brandId: "brand_novu",
+      countryCode: "IN",
+      countryName: "India",
+      languageCode: "en",
+      languageName: "English",
+      geolocation: "Pune",
+      keyword: "novu mobile warranty",
+      runId: null,
+      status: "pending",
+      score: 0,
+      selected: false,
+      createdAt: scheduledCreatedAt,
     },
   ];
 
-  const demoRuns: Run[] = [
+  const runDefinitions: DemoRunDefinition[] = [
     {
       id: "run_weekly_reputation",
-      tenantId: currentTenantId,
       name: "Weekly Reputation Scan",
       description: "Cross-brand sweep for priority review queries.",
-      status: "ready",
-      createdAt: readyCreatedAt,
+      status: "completed",
+      createdAt: twoDaysAgo,
       executionMode: "now",
       scheduledFor: null,
-      taskIds: ["cfg_velora_review", "cfg_lunoro_name", "cfg_klyra_review", "cfg_novu_name"],
       brandId: "brand_velora",
-      brandName: "4 brands",
-      startedAt: readyCreatedAt,
-      finishedAt: null,
-      totalQueries: 4,
-      completedQueries: 0,
-      failedQueries: 0,
+      brandName: "3 brands",
+      startedAt: new Date(now.getTime() - 1000 * 60 * 60 * 49).toISOString(),
+      finishedAt: new Date(now.getTime() - 1000 * 60 * 60 * 47).toISOString(),
     },
     {
       id: "run_market_sentiment",
-      tenantId: currentTenantId,
       name: "Market Sentiment Check",
       description: "Scheduled comparison across Malaysia and India markets.",
+      status: "completed",
+      createdAt: yesterday,
+      executionMode: "now",
+      scheduledFor: null,
+      brandId: "brand_lunoro",
+      brandName: "3 brands",
+      startedAt: new Date(now.getTime() - 1000 * 60 * 60 * 27).toISOString(),
+      finishedAt: new Date(now.getTime() - 1000 * 60 * 60 * 25).toISOString(),
+    },
+    {
+      id: "run_brand_risk_audit",
+      name: "Brand Risk Audit",
+      description: "Deep scan of scam-related keywords across all regions.",
+      status: "completed",
+      createdAt: twelveHoursAgo,
+      executionMode: "now",
+      scheduledFor: null,
+      brandId: "brand_klyra",
+      brandName: "3 brands",
+      startedAt: new Date(now.getTime() - 1000 * 60 * 60 * 13).toISOString(),
+      finishedAt: new Date(now.getTime() - 1000 * 60 * 60 * 11).toISOString(),
+    },
+    {
+      id: "run_live_watch",
+      name: "Live Reputation Watch",
+      description: "Actively collecting new mentions across high-priority travel and home queries.",
+      status: "running",
+      createdAt: readyCreatedAt,
+      executionMode: "now",
+      scheduledFor: null,
+      brandId: "brand_lunoro",
+      brandName: "2 brands",
+      startedAt: readyCreatedAt,
+      finishedAt: null,
+    },
+    {
+      id: "run_upcoming_regional_scan",
+      name: "Upcoming Regional Scan",
+      description: "Queued follow-up coverage for newly configured mobile trust keywords.",
       status: "scheduled",
       createdAt: scheduledCreatedAt,
       executionMode: "scheduled",
       scheduledFor,
-      taskIds: ["cfg_lunoro_scam", "cfg_novu_review"],
-      brandId: "brand_lunoro",
-      brandName: "2 brands",
+      brandId: "brand_novu",
+      brandName: "1 brand",
       startedAt: scheduledCreatedAt,
       finishedAt: null,
-      totalQueries: 2,
-      completedQueries: 0,
-      failedQueries: 0,
     },
   ];
 
-  const demoRunQueryResults: RunQueryResult[] = [
-    {
-      id: "rqr_velora_review",
-      runId: "run_weekly_reputation",
-      queryRowId: "qry_velora_review",
-      keyword: "velora skin review",
-      countryCode: "CH",
-      countryName: "Switzerland",
-      languageCode: "en",
-      languageName: "English",
-      status: "pending",
-      score: 0,
-      resultCount: 0,
-    },
-    {
-      id: "rqr_lunoro_name",
-      runId: "run_weekly_reputation",
-      queryRowId: "qry_lunoro_name",
-      keyword: "lunoro travel",
-      countryCode: "MY",
-      countryName: "Malaysia",
-      languageCode: "ms",
-      languageName: "Malay",
-      status: "pending",
-      score: 0,
-      resultCount: 0,
-    },
-    {
-      id: "rqr_klyra_review",
-      runId: "run_weekly_reputation",
-      queryRowId: "qry_klyra_review",
-      keyword: "klyra home review",
-      countryCode: "CH",
-      countryName: "Switzerland",
-      languageCode: "en",
-      languageName: "English",
-      status: "pending",
-      score: 0,
-      resultCount: 0,
-    },
-    {
-      id: "rqr_novu_name",
-      runId: "run_weekly_reputation",
-      queryRowId: "qry_novu_name",
-      keyword: "novu mobile",
-      countryCode: "IN",
-      countryName: "India",
-      languageCode: "en",
-      languageName: "English",
-      status: "pending",
-      score: 0,
-      resultCount: 0,
-    },
-    {
-      id: "rqr_lunoro_scam",
-      runId: "run_market_sentiment",
-      queryRowId: "qry_lunoro_scam",
-      keyword: "lunoro travel scam",
-      countryCode: "MY",
-      countryName: "Malaysia",
-      languageCode: "en",
-      languageName: "English",
-      status: "pending",
-      score: 0,
-      resultCount: 0,
-    },
-    {
-      id: "rqr_novu_review",
-      runId: "run_market_sentiment",
-      queryRowId: "qry_novu_review",
-      keyword: "novu mobile review",
-      countryCode: "IN",
-      countryName: "India",
-      languageCode: "en",
-      languageName: "English",
-      status: "pending",
-      score: 0,
-      resultCount: 0,
-    },
-  ];
+  const demoTasks: BrandConfigRow[] = taskDefinitions.map((task) => ({
+    id: task.configId,
+    brandId: task.brandId,
+    countryCode: task.countryCode,
+    countryName: task.countryName,
+    languageCode: task.languageCode,
+    languageName: task.languageName,
+    geolocation: task.geolocation,
+    keywords: [task.keyword],
+    runId: task.runId,
+    createdAt: task.createdAt,
+    updatedAt: task.createdAt,
+  }));
 
-  const demoQueryResultUrls: QueryResultUrl[] = [
-    {
-      id: "url_velora_1",
-      queryRowId: "qry_velora_name",
-      position: 1,
-      title: "Velora Skin review roundup from Zurich",
-      url: "https://search.sentient.example/qry_velora_name/1",
-      source: "Review Site",
-      sentiment: "positive",
-      score: 0.81,
-      snippet: "Customer feedback highlights delivery speed and steady product quality.",
-    },
-    {
-      id: "url_velora_2",
-      queryRowId: "qry_velora_name",
-      position: 2,
-      title: "Velora Skin customer sentiment overview",
-      url: "https://search.sentient.example/qry_velora_name/2",
-      source: "Blog",
-      sentiment: "positive",
-      score: 0.69,
-      snippet: "Search coverage shows a favorable mix of mentions around ingredients and support.",
-    },
-    {
-      id: "url_lunoro_1",
-      queryRowId: "qry_lunoro_review",
-      position: 1,
-      title: "Lunoro Travel review complaints in Malaysia",
-      url: "https://search.sentient.example/qry_lunoro_review/1",
-      source: "Forum",
-      sentiment: "negative",
-      score: -0.24,
-      snippet: "Recent posts focus on refund timing and baggage durability concerns.",
-    },
-    {
-      id: "url_lunoro_2",
-      queryRowId: "qry_lunoro_review",
-      position: 2,
-      title: "Lunoro Travel social chatter snapshot",
-      url: "https://search.sentient.example/qry_lunoro_review/2",
-      source: "Community",
-      sentiment: "neutral",
-      score: -0.04,
-      snippet: "Mixed discussion continues, with more scrutiny around customer response times.",
-    },
-    {
-      id: "url_novu_1",
-      queryRowId: "qry_novu_scam",
-      position: 1,
-      title: "Novu Mobile scam warning threads",
-      url: "https://search.sentient.example/qry_novu_scam/1",
-      source: "Reddit",
-      sentiment: "negative",
-      score: -0.36,
-      snippet: "Multiple discussion threads question warranty handling in Delhi.",
-    },
-    {
-      id: "url_novu_2",
-      queryRowId: "qry_novu_scam",
-      position: 2,
-      title: "Novu Mobile Hindi review digest",
-      url: "https://search.sentient.example/qry_novu_scam/2",
-      source: "YouTube",
-      sentiment: "negative",
-      score: -0.28,
-      snippet: "Video sentiment trends negative, with repair delays mentioned most often.",
-    },
-  ];
+  const demoQueryRows: QueryRow[] = taskDefinitions.map((task) => ({
+    id: task.queryId,
+    tenantId: currentTenantId,
+    brandId: task.brandId,
+    brandName: brandNamesById.get(task.brandId) ?? "Unknown brand",
+    countryCode: task.countryCode,
+    countryName: task.countryName,
+    languageCode: task.languageCode,
+    languageName: task.languageName,
+    keyword: task.keyword,
+    status: task.status,
+    selected: task.selected,
+    score: task.score,
+    runId: task.runId,
+  }));
+
+  const demoRuns: Run[] = runDefinitions.map((run) => {
+    const runTasks = taskDefinitions.filter((task) => task.runId === run.id);
+    return {
+      id: run.id,
+      tenantId: currentTenantId,
+      name: run.name,
+      description: run.description,
+      status: run.status,
+      createdAt: run.createdAt,
+      executionMode: run.executionMode,
+      scheduledFor: run.scheduledFor,
+      taskIds: runTasks.map((task) => task.configId),
+      brandId: run.brandId,
+      brandName: run.brandName,
+      startedAt: run.startedAt,
+      finishedAt: run.finishedAt,
+      totalQueries: runTasks.length,
+      completedQueries: runTasks.filter((task) => task.status === "done").length,
+      failedQueries: runTasks.filter((task) => task.status === "failed").length,
+    };
+  });
+
+  const demoRunQueryResults: RunQueryResult[] = taskDefinitions
+    .filter((task) => task.runId)
+    .map((task) => ({
+      id: `rqr_${task.queryId.replace(/^qry_/, "")}`,
+      runId: task.runId ?? "",
+      queryRowId: task.queryId,
+      keyword: task.keyword,
+      countryCode: task.countryCode,
+      countryName: task.countryName,
+      languageCode: task.languageCode,
+      languageName: task.languageName,
+      status: task.status,
+      score: task.score,
+      resultCount: task.status === "done" ? 10 : 0,
+    }));
+
+  function slugify(value: string) {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+
+  function buildResultEntries(
+    queryRowId: string,
+    brandName: string,
+    keyword: string,
+    countryName: string,
+    languageName: string,
+    profile: ResultProfile,
+    count = 10,
+  ): QueryResultUrl[] {
+    const baseSlug = slugify(keyword);
+    const keywordLead = keyword[0].toUpperCase() + keyword.slice(1);
+    const domainSeed = [
+      {
+        source: "Trustpilot",
+        url: `https://www.trustpilot.com/review/${slugify(brandName)}.example`,
+        title: `${brandName} reviews and rating snapshot`,
+        snippet: `Customer ratings for ${brandName} in ${countryName} show how ${keyword} is trending.`,
+      },
+      {
+        source: "Reddit",
+        url: `https://www.reddit.com/r/marketing/comments/${baseSlug}/`,
+        title: `What customers are saying about ${keyword}`,
+        snippet: `Community threads discuss delivery, support, and whether ${brandName} matches expectations.`,
+      },
+      {
+        source: "Medium",
+        url: `https://medium.com/@sentiment-lab/${baseSlug}-${slugify(countryName)}`,
+        title: `${keywordLead}: market pulse in ${countryName}`,
+        snippet: `A long-form breakdown of search interest and recurring themes for ${brandName}.`,
+      },
+      {
+        source: "LinkedIn",
+        url: `https://www.linkedin.com/posts/${slugify(brandName)}_${baseSlug}`,
+        title: `${brandName} leadership update on customer feedback`,
+        snippet: `The company addresses product quality, service timelines, and ${keyword}.`,
+      },
+      {
+        source: "Consumer Blog",
+        url: `https://www.consumerpulse.co/${baseSlug}-${slugify(countryName)}`,
+        title: `${brandName} buyer guide: ${keyword}`,
+        snippet: `Editorial coverage outlines search sentiment signals and common customer questions.`,
+      },
+      {
+        source: "Tech Forum",
+        url: `https://forum.digitalvoice.example/topics/${baseSlug}`,
+        title: `${keywordLead} forum roundup`,
+        snippet: `Forum users compare alternatives, warranty response, and recent experiences with ${brandName}.`,
+      },
+      {
+        source: "Local News",
+        url: `https://news.marketwatcher.example/${slugify(countryName)}/${baseSlug}`,
+        title: `${countryName} search chatter around ${brandName}`,
+        snippet: `Regional coverage highlights the tone of mentions tied to ${keyword}.`,
+      },
+      {
+        source: "YouTube",
+        url: `https://www.youtube.com/watch?v=${slugify(queryRowId).slice(0, 11)}`,
+        title: `${brandName} customer review video on ${keyword}`,
+        snippet: `Video commentary summarizes product sentiment, complaints, and repeat praise points.`,
+      },
+      {
+        source: "Review Site",
+        url: `https://www.sitejabber.com/reviews/${slugify(brandName)}.example`,
+        title: `${brandName} review highlights`,
+        snippet: `Review-site excerpts surface the strongest praise and criticism around ${keyword}.`,
+      },
+      {
+        source: "Industry News",
+        url: `https://insight-journal.example/${slugify(languageName)}/${baseSlug}`,
+        title: `${keywordLead} coverage and analyst commentary`,
+        snippet: `Analyst-style reporting adds context to how ${brandName} is being discussed online.`,
+      },
+    ];
+
+    const sentimentByProfile: Record<ResultProfile, Array<{ sentiment: QueryResultUrl["sentiment"]; score: number }>> = {
+      mostly_positive: [
+        { sentiment: "positive", score: 0.86 },
+        { sentiment: "positive", score: 0.74 },
+        { sentiment: "positive", score: 0.63 },
+        { sentiment: "neutral", score: 0.18 },
+        { sentiment: "positive", score: 0.58 },
+        { sentiment: "negative", score: -0.28 },
+        { sentiment: "positive", score: 0.41 },
+        { sentiment: "neutral", score: 0.09 },
+        { sentiment: "positive", score: 0.35 },
+        { sentiment: "negative", score: -0.12 },
+      ],
+      mixed: [
+        { sentiment: "positive", score: 0.54 },
+        { sentiment: "neutral", score: 0.08 },
+        { sentiment: "negative", score: -0.34 },
+        { sentiment: "positive", score: 0.29 },
+        { sentiment: "neutral", score: 0.03 },
+        { sentiment: "positive", score: 0.22 },
+        { sentiment: "negative", score: -0.19 },
+        { sentiment: "positive", score: 0.31 },
+        { sentiment: "neutral", score: 0.02 },
+        { sentiment: "positive", score: 0.17 },
+      ],
+      mostly_negative: [
+        { sentiment: "negative", score: -0.71 },
+        { sentiment: "negative", score: -0.58 },
+        { sentiment: "neutral", score: -0.03 },
+        { sentiment: "negative", score: -0.42 },
+        { sentiment: "positive", score: 0.19 },
+        { sentiment: "negative", score: -0.36 },
+        { sentiment: "neutral", score: 0.04 },
+        { sentiment: "negative", score: -0.27 },
+        { sentiment: "positive", score: 0.11 },
+        { sentiment: "negative", score: -0.22 },
+      ],
+    };
+
+    return domainSeed.slice(0, count).map((seed, index) => ({
+      id: `url_${queryRowId}_${index + 1}`,
+      queryRowId,
+      position: index + 1,
+      title: seed.title,
+      url: seed.url,
+      source: seed.source,
+      sentiment: sentimentByProfile[profile][index].sentiment,
+      score: sentimentByProfile[profile][index].score,
+      snippet: seed.snippet,
+    }));
+  }
+
+  const completedProfiles: Record<string, ResultProfile> = {
+    qry_velora_review: "mostly_positive",
+    qry_lunoro_review_ms: "mixed",
+    qry_klyra_legit_de: "mostly_positive",
+    qry_novu_review_en: "mixed",
+    qry_lunoro_complaints_sg: "mostly_negative",
+    qry_velora_legit_fr: "mixed",
+    qry_klyra_scam_de: "mostly_negative",
+    qry_novu_scam_hi: "mostly_negative",
+    qry_velora_complaints_uk: "mixed",
+  };
+
+  const demoQueryResultUrls: QueryResultUrl[] = taskDefinitions.flatMap((task) => {
+    const brandName = brandNamesById.get(task.brandId) ?? "Unknown brand";
+
+    if (task.status === "done") {
+      return buildResultEntries(
+        task.queryId,
+        brandName,
+        task.keyword,
+        task.countryName,
+        task.languageName,
+        completedProfiles[task.queryId] ?? "mixed",
+      );
+    }
+
+    if (task.status === "searching") {
+      return buildResultEntries(
+        task.queryId,
+        brandName,
+        task.keyword,
+        task.countryName,
+        task.languageName,
+        "mixed",
+        3,
+      );
+    }
+
+    return [];
+  });
 
   replaceCollection(brands, demoBrands);
   replaceCollection(brandConfigRows, demoTasks);
@@ -1036,7 +1097,21 @@ export async function startScheduledRunNow(runId: string) {
     throw new ApiError("Run is not scheduled", 400);
   }
 
-  run.status = "ready";
+  const now = new Date().toISOString();
+  run.status = "running";
+  run.startedAt = now;
+  run.finishedAt = null;
+
+  runQueryResults.forEach((result) => {
+    if (result.runId === runId && result.status === "pending") {
+      result.status = "searching";
+      const queryRow = queryRows.find((row) => row.id === result.queryRowId);
+      if (queryRow) {
+        queryRow.status = "searching";
+      }
+    }
+  });
+
   return simulate(run);
 }
 
@@ -1095,7 +1170,7 @@ export async function createRun(payload: CreateRunPayload) {
     tenantId: currentTenantId,
     name: payload.name.trim(),
     description: payload.description?.trim() || undefined,
-    status: payload.executionMode === "scheduled" ? "scheduled" : "ready",
+    status: payload.executionMode === "scheduled" ? "scheduled" : "running",
     createdAt,
     executionMode: payload.executionMode,
     scheduledFor: payload.scheduledFor,
@@ -1131,39 +1206,23 @@ export async function createRun(payload: CreateRunPayload) {
         countryName: row.countryName,
         languageCode: row.languageCode,
         languageName: row.languageName,
-        status: "pending",
+        status: payload.executionMode === "scheduled" ? "pending" : "searching",
         score: 0,
         resultCount: 0,
       });
     });
   });
 
-  run.totalQueries = runQueryResults.filter((item) => item.runId === runId).length;
-  runs.unshift(run);
-  return simulate(run);
-}
-
-export async function runReadyRun(runId: string) {
-  const run = requireValue(runs.find((item) => item.id === runId), "Run not found");
-  if (run.status !== "ready") {
-    throw new ApiError("Run is not ready", 400);
+  if (payload.executionMode === "now") {
+    queryRows.forEach((row) => {
+      if (row.runId === runId) {
+        row.status = "searching";
+      }
+    });
   }
 
-  const now = new Date().toISOString();
-  run.status = "running";
-  run.startedAt = now;
-  run.finishedAt = null;
-
-  runQueryResults.forEach((result) => {
-    if (result.runId === runId && result.status === "pending") {
-      result.status = "searching";
-      const queryRow = queryRows.find((row) => row.id === result.queryRowId);
-      if (queryRow) {
-        queryRow.status = "searching";
-      }
-    }
-  });
-
+  run.totalQueries = runQueryResults.filter((item) => item.runId === runId).length;
+  runs.unshift(run);
   return simulate(run);
 }
 
@@ -1180,6 +1239,57 @@ export async function getRunQueryResults(runId: string) {
         resultCount: result.status === "done" ? 10 : result.status === "failed" ? 0 : result.resultCount,
       })),
   );
+}
+
+export async function getRunResultTasks(runId: string): Promise<RunResultTaskGroup[]> {
+  const run = requireValue(runs.find((item) => item.id === runId), "Run not found");
+
+  const tasks = runQueryResults
+    .filter((result) => result.runId === runId)
+    .map((result) => {
+      const queryRow = queryRows.find((row) => row.id === result.queryRowId);
+      const urls =
+        result.status === "done"
+          ? ensureTenResultsForQuery(result.queryRowId)
+          : queryResultUrls
+              .filter((url) => url.queryRowId === result.queryRowId)
+              .sort((a, b) => a.position - b.position);
+
+      const summary = urls.reduce(
+        (acc, url) => {
+          if (url.sentiment === "positive") {
+            acc.positive += 1;
+          } else if (url.sentiment === "negative") {
+            acc.negative += 1;
+          } else {
+            acc.neutral += 1;
+          }
+
+          return acc;
+        },
+        { positive: 0, negative: 0, neutral: 0 },
+      );
+
+      return {
+        id: result.queryRowId,
+        runId,
+        queryRowId: result.queryRowId,
+        keyword: result.keyword,
+        brandId: queryRow?.brandId ?? run.brandId,
+        brandName: queryRow?.brandName ?? run.brandName,
+        countryCode: result.countryCode,
+        countryName: result.countryName,
+        languageCode: result.languageCode,
+        languageName: result.languageName,
+        status: result.status,
+        score: result.score,
+        resultCount: result.status === "done" ? 10 : result.resultCount,
+        urls,
+        summary,
+      };
+    });
+
+  return simulate(tasks);
 }
 
 export async function getRunResultUrls(_runId: string, queryRowId: string) {

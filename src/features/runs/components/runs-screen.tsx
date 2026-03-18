@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { AddBrandModal } from "@/components/shared/add-brand-modal";
 import { CreateRunWizardModal } from "@/features/runs/components/create-run-wizard-modal";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageShell } from "@/components/shared/page-shell";
@@ -17,35 +19,32 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getRunRoute } from "@/lib/constants/routes";
 import { formatDateTime } from "@/lib/utils/dates";
+import { configurationApi } from "@/features/configuration/api/configuration-api";
 import { runsApi } from "@/features/runs/api/runs-api";
 
 export function RunsScreen() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState("all");
   const [search, setSearch] = useState("");
   const [isCreateRunOpen, setIsCreateRunOpen] = useState(false);
+  const [isNewBrandOpen, setIsNewBrandOpen] = useState(false);
   const query = useQuery({
     queryKey: ["runs"],
     queryFn: runsApi.getRuns,
   });
-
-  const startNowMutation = useMutation({
-    mutationFn: (runId: string) => runsApi.startNow(runId),
-    onSuccess: async (_, runId) => {
-      await queryClient.invalidateQueries({ queryKey: ["runs"] });
-      await queryClient.invalidateQueries({ queryKey: ["run", runId] });
-    },
+  const brandsQuery = useQuery({
+    queryKey: ["brands"],
+    queryFn: configurationApi.getBrands,
   });
-
-  const runMutation = useMutation({
-    mutationFn: (runId: string) => runsApi.run(runId),
-    onSuccess: async (_, runId) => {
-      await queryClient.invalidateQueries({ queryKey: ["runs"] });
-      await queryClient.invalidateQueries({ queryKey: ["run", runId] });
-      await queryClient.invalidateQueries({ queryKey: ["run-query-results", runId] });
-      await queryClient.invalidateQueries({ queryKey: ["dashboard-query-rows"] });
-    },
+  const taskPoolSummaryQuery = useQuery({
+    queryKey: ["run-task-pool-summary"],
+    queryFn: runsApi.getTaskPoolSummary,
   });
+  const hasAvailableTasks = taskPoolSummaryQuery.data ? taskPoolSummaryQuery.data.availableTasks > 0 : false;
+  const createRunHelperText = hasAvailableTasks
+    ? null
+    : "No available tasks. Add new tasks in Configuration before creating another run.";
 
   const filteredRuns = useMemo(() => {
     if (!query.data) {
@@ -60,31 +59,95 @@ export function RunsScreen() {
     });
   }, [query.data, search, status]);
 
-  if (query.isLoading) {
+  if (query.isLoading || brandsQuery.isLoading || taskPoolSummaryQuery.isLoading) {
     return <LoadingState label="Loading run history..." />;
   }
 
-  if (query.isError || !query.data) {
-    return <ErrorState onRetry={() => query.refetch()} />;
+  if (query.isError || brandsQuery.isError || taskPoolSummaryQuery.isError || !query.data || !brandsQuery.data || !taskPoolSummaryQuery.data) {
+    return <ErrorState onRetry={() => {
+      query.refetch();
+      brandsQuery.refetch();
+      taskPoolSummaryQuery.refetch();
+    }} />;
   }
 
-  if (!filteredRuns.length) {
+  if (!query.data.length) {
+    if (!brandsQuery.data.length) {
+      return (
+        <PageShell>
+          <PageHeader
+            title="Runs"
+            description="Previous executions across brands, with status and completion detail."
+          />
+          <EmptyState
+            title="No brands yet"
+            description="Create a new brand to start setting up tasks and creating runs."
+            action={(
+              <Button onClick={() => setIsNewBrandOpen(true)}>
+                Create Brand
+              </Button>
+            )}
+          />
+          <AddBrandModal
+            open={isNewBrandOpen}
+            onOpenChange={setIsNewBrandOpen}
+            onCreated={async () => {
+              await queryClient.invalidateQueries({ queryKey: ["brands"] });
+              await queryClient.invalidateQueries({ queryKey: ["dashboard-brands"] });
+            }}
+          />
+        </PageShell>
+      );
+    }
+
+    if (taskPoolSummaryQuery.data.totalTasks === 0) {
+      return (
+        <PageShell>
+          <PageHeader
+            title="Runs"
+            description="Previous executions across brands, with status and completion detail."
+          />
+            <EmptyState
+              title="No tasks yet"
+              description="Create a task for one of your brands before creating a run."
+              action={(
+              <Button onClick={() => router.push(`/configuration?brandId=${brandsQuery.data[0].id}`)}>
+                Create Task
+              </Button>
+              )}
+            />
+        </PageShell>
+      );
+    }
+
     return (
       <PageShell>
         <PageHeader
           title="Runs"
           description="Previous executions across brands, with status and completion detail."
-          actions={<Button onClick={() => setIsCreateRunOpen(true)}>Create Run</Button>}
+          actions={(
+            <div className="flex flex-col items-end gap-2">
+              <Button disabled={!hasAvailableTasks} onClick={() => setIsCreateRunOpen(true)}>
+                Create Run
+              </Button>
+              {createRunHelperText ? (
+                <p className="max-w-64 text-right text-xs text-slate-400">{createRunHelperText}</p>
+              ) : null}
+            </div>
+          )}
         />
         <EmptyState
           title="No runs yet"
-          description="Create your first run to group tasks and prepare execution."
+          description="Create a run to group tasks and prepare execution."
           action={(
-            <Button onClick={() => setIsCreateRunOpen(true)}>
+            <Button disabled={!hasAvailableTasks} onClick={() => setIsCreateRunOpen(true)}>
               Create Run
             </Button>
           )}
         />
+        {createRunHelperText ? (
+          <p className="mt-4 text-center text-sm text-slate-400">{createRunHelperText}</p>
+        ) : null}
         <CreateRunWizardModal open={isCreateRunOpen} onOpenChange={setIsCreateRunOpen} />
       </PageShell>
     );
@@ -95,7 +158,16 @@ export function RunsScreen() {
       <PageHeader
         title="Runs"
         description="Previous executions across brands, with status and completion detail."
-        actions={<Button onClick={() => setIsCreateRunOpen(true)}>Create Run</Button>}
+        actions={(
+          <div className="flex flex-col items-end gap-2">
+            <Button disabled={!hasAvailableTasks} onClick={() => setIsCreateRunOpen(true)}>
+              Create Run
+            </Button>
+            {createRunHelperText ? (
+              <p className="max-w-64 text-right text-xs text-slate-400">{createRunHelperText}</p>
+            ) : null}
+          </div>
+        )}
       />
 
       <AppTable
@@ -124,23 +196,23 @@ export function RunsScreen() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Run name</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Task Count</TableHead>
-              <TableHead className="w-32 text-right">Actions</TableHead>
+              <TableHead className="whitespace-nowrap">Run name</TableHead>
+              <TableHead className="whitespace-nowrap">Status</TableHead>
+              <TableHead className="whitespace-nowrap">Created</TableHead>
+              <TableHead className="whitespace-nowrap">Task Count</TableHead>
+              <TableHead className="w-32 whitespace-nowrap text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredRuns.map((run) => (
               <TableRow key={run.id}>
                 <TableCell>
-                  <div>
+                  <div className="max-w-[600px]">
                     <Link className="font-medium text-white hover:text-[#ffb56e]" href={getRunRoute(run.id)}>
                       {run.name}
                     </Link>
                     {run.description ? (
-                      <p className="mt-1 text-xs text-slate-400">{run.description}</p>
+                      <p className="mt-1 line-clamp-3 text-xs text-slate-400">{run.description}</p>
                     ) : null}
                   </div>
                 </TableCell>
@@ -152,7 +224,7 @@ export function RunsScreen() {
                     ) : null}
                   </div>
                 </TableCell>
-                <TableCell>{formatDateTime(run.createdAt)}</TableCell>
+                <TableCell className="whitespace-nowrap">{formatDateTime(run.createdAt)}</TableCell>
                 <TableCell>{run.taskIds.length}</TableCell>
                 <TableCell className="text-right">
                   {run.status === "scheduled" ? (
@@ -160,20 +232,15 @@ export function RunsScreen() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      disabled={startNowMutation.isPending}
-                      onClick={() => startNowMutation.mutate(run.id)}
+                      onClick={async () => {
+                        await runsApi.startNow(run.id);
+                        await queryClient.invalidateQueries({ queryKey: ["runs"] });
+                        await queryClient.invalidateQueries({ queryKey: ["run", run.id] });
+                        await queryClient.invalidateQueries({ queryKey: ["run-query-results", run.id] });
+                        await queryClient.invalidateQueries({ queryKey: ["dashboard-query-rows"] });
+                      }}
                     >
                       Start now
-                    </Button>
-                  ) : null}
-                  {run.status === "ready" ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={runMutation.isPending}
-                      onClick={() => runMutation.mutate(run.id)}
-                    >
-                      Run
                     </Button>
                   ) : null}
                   {run.status === "running" ? (

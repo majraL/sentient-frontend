@@ -230,7 +230,6 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
                           <TableHead>Title / URL</TableHead>
                           <TableHead className="whitespace-nowrap">Source/domain</TableHead>
                           <TableHead className="whitespace-nowrap">Sentiment</TableHead>
-                          <TableHead className="whitespace-nowrap">Score</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -241,7 +240,7 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
                             <TableRow key={url.id}>
                               <TableCell>{url.position}</TableCell>
                               <TableCell>
-                                <div className="max-w-[520px] space-y-1">
+                                <div className="max-w-[640px] space-y-1">
                                   <a
                                     href={url.url}
                                     target="_blank"
@@ -263,7 +262,6 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
                               <TableCell>
                                 <Badge variant={sentiment.variant}>{sentiment.label}</Badge>
                               </TableCell>
-                              <TableCell>{url.score.toFixed(2)}</TableCell>
                             </TableRow>
                           );
                         })}

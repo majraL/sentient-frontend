@@ -17,7 +17,7 @@ import { SearchInput } from "@/components/shared/search-input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getRunRoute } from "@/lib/constants/routes";
+import { getResultsRoute, getRunRoute } from "@/lib/constants/routes";
 import { formatDateTime } from "@/lib/utils/dates";
 import { configurationApi } from "@/features/configuration/api/configuration-api";
 import { runsApi } from "@/features/runs/api/runs-api";
@@ -200,7 +200,7 @@ export function RunsScreen() {
               <TableHead className="whitespace-nowrap">Status</TableHead>
               <TableHead className="whitespace-nowrap">Created</TableHead>
               <TableHead className="whitespace-nowrap">Task Count</TableHead>
-              <TableHead className="w-32 whitespace-nowrap text-right">Actions</TableHead>
+              <TableHead className="w-[240px] whitespace-nowrap text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -227,35 +227,38 @@ export function RunsScreen() {
                 <TableCell className="whitespace-nowrap">{formatDateTime(run.createdAt)}</TableCell>
                 <TableCell>{run.taskIds.length}</TableCell>
                 <TableCell className="text-right">
-                  {run.status === "scheduled" ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={async () => {
-                        await runsApi.startNow(run.id);
-                        await queryClient.invalidateQueries({ queryKey: ["runs"] });
-                        await queryClient.invalidateQueries({ queryKey: ["run", run.id] });
-                        await queryClient.invalidateQueries({ queryKey: ["run-query-results", run.id] });
-                        await queryClient.invalidateQueries({ queryKey: ["dashboard-query-rows"] });
-                      }}
-                    >
-                      Start now
-                    </Button>
-                  ) : null}
-                  {run.status === "running" ? (
-                    <Button type="button" size="sm" variant="outline" disabled>
-                      Running
-                    </Button>
-                  ) : null}
-                  {run.status === "completed" ? (
-                    <Button asChild type="button" size="sm" variant="outline">
-                      <Link href={getRunRoute(run.id)}>View</Link>
-                    </Button>
-                  ) : null}
-                  {run.status === "failed" ? (
-                    <span className="text-xs text-slate-500">No action</span>
-                  ) : null}
+                  <div className="flex flex-col items-end gap-2">
+                    {run.status === "scheduled" ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          await runsApi.startNow(run.id);
+                          await queryClient.invalidateQueries({ queryKey: ["runs"] });
+                          await queryClient.invalidateQueries({ queryKey: ["run", run.id] });
+                          await queryClient.invalidateQueries({ queryKey: ["run-query-results", run.id] });
+                          await queryClient.invalidateQueries({ queryKey: ["dashboard-query-rows"] });
+                        }}
+                      >
+                        Start now
+                      </Button>
+                    ) : null}
+                    {run.status === "running" ? (
+                      <span className="text-xs text-slate-500">In progress</span>
+                    ) : null}
+                    {run.status === "failed" ? (
+                      <span className="text-xs text-slate-500">Review available</span>
+                    ) : null}
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <Button asChild type="button" size="sm" variant="ghost">
+                        <Link href={getRunRoute(run.id)}>View Run</Link>
+                      </Button>
+                      <Button asChild type="button" size="sm" variant="outline">
+                        <Link href={getResultsRoute(run.id)}>View results</Link>
+                      </Button>
+                    </div>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

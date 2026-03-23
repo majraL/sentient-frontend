@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, ExternalLink, Pencil } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { BrandTabs } from "@/components/shared/brand-tabs";
 import { PageShell } from "@/components/shared/page-shell";
@@ -26,11 +26,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { resultsApi } from "@/features/results/api/results-api";
 import { ROUTES } from "@/lib/constants/routes";
 import { formatDateTime } from "@/lib/utils/dates";
-import type { QuerySentiment } from "@/types/api";
+import type { QueryResultUrl, QuerySentiment } from "@/types/api";
+
+type EditableResultFields = Pick<QueryResultUrl, "title" | "url" | "source" | "sentiment" | "snippet">;
 
 function getSentimentBadge(sentiment: QuerySentiment) {
   if (sentiment === "positive") {
@@ -62,6 +68,15 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
   const [activeBrandId, setActiveBrandId] = useState("all");
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
   const [isDescriptionOverflowing, setIsDescriptionOverflowing] = useState(false);
+  const [resultOverrides, setResultOverrides] = useState<Record<string, EditableResultFields>>({});
+  const [editingResultId, setEditingResultId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditableResultFields>({
+    title: "",
+    url: "",
+    source: "",
+    sentiment: "neutral",
+    snippet: "",
+  });
   const descriptionRef = useRef<HTMLParagraphElement | null>(null);
 
   const runQuery = useQuery({
@@ -113,10 +128,51 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
     return Array.from(brandMap.values());
   }, [sortedTasks]);
 
+  const originalResultsById = useMemo(
+    () =>
+      new Map(
+        sortedTasks.flatMap((task) =>
+          task.urls.map((url) => [url.id, url] as const),
+        ),
+      ),
+    [sortedTasks],
+  );
+
+  const displayedTasks = useMemo(
+    () =>
+      sortedTasks.map((task) => {
+        const urls = task.urls.map((url) => {
+          const override = resultOverrides[url.id];
+          return override ? { ...url, ...override } : url;
+        });
+
+        const summary = urls.reduce(
+          (acc, url) => {
+            if (url.sentiment === "positive") {
+              acc.positive += 1;
+            } else if (url.sentiment === "negative") {
+              acc.negative += 1;
+            } else {
+              acc.neutral += 1;
+            }
+            return acc;
+          },
+          { positive: 0, negative: 0, neutral: 0 },
+        );
+
+        return {
+          ...task,
+          urls,
+          summary,
+        };
+      }),
+    [resultOverrides, sortedTasks],
+  );
+
   const visibleTasks = useMemo(
     () =>
-      sortedTasks.filter((task) => activeBrandId === "all" || task.brandId === activeBrandId),
-    [activeBrandId, sortedTasks],
+      displayedTasks.filter((task) => activeBrandId === "all" || task.brandId === activeBrandId),
+    [activeBrandId, displayedTasks],
   );
 
   if (runQuery.isLoading || tasksQuery.isLoading) {
@@ -131,6 +187,66 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
   }
 
   const run = runQuery.data;
+
+  function handleEditClick(result: QueryResultUrl) {
+    setEditingResultId(result.id);
+    setEditForm({
+      title: result.title,
+      url: result.url,
+      source: result.source,
+      sentiment: result.sentiment,
+      snippet: result.snippet,
+    });
+  }
+
+  function handleSaveResult() {
+    if (!editingResultId) {
+      return;
+    }
+
+    const original = originalResultsById.get(editingResultId);
+    if (!original) {
+      return;
+    }
+
+    const nextOverride = {
+      title: editForm.title.trim(),
+      url: editForm.url.trim(),
+      source: editForm.source.trim(),
+      sentiment: editForm.sentiment,
+      snippet: editForm.snippet,
+    };
+
+    const hasChanges =
+      nextOverride.title !== original.title ||
+      nextOverride.url !== original.url ||
+      nextOverride.source !== original.source ||
+      nextOverride.sentiment !== original.sentiment ||
+      nextOverride.snippet !== original.snippet;
+
+    setResultOverrides((current) => {
+      if (!hasChanges) {
+        const { [editingResultId]: _removed, ...rest } = current;
+        return rest;
+      }
+
+      return {
+        ...current,
+        [editingResultId]: nextOverride,
+      };
+    });
+
+    setEditingResultId(null);
+    toast.success("Result updated");
+  }
+
+  function handleResetResult(resultId: string) {
+    setResultOverrides((current) => {
+      const { [resultId]: _removed, ...rest } = current;
+      return rest;
+    });
+    toast.success("Result reset to default");
+  }
 
   return (
     <PageShell>
@@ -171,14 +287,6 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
             <div className="rounded-xl border border-white/8 bg-[#0a1321] px-3 py-2 text-xs text-slate-300">
               Finished: {run.finishedAt ? formatDateTime(run.finishedAt) : "In progress"}
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => toast.success("Edit mode coming soon")}
-            >
-              <Pencil className="size-4" />
-              Edit
-            </Button>
             <Button
               type="button"
               onClick={() => toast.success("Download coming soon")}
@@ -270,11 +378,13 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
                         <TableHead>Title / URL</TableHead>
                         <TableHead className="whitespace-nowrap">Source/domain</TableHead>
                         <TableHead className="whitespace-nowrap">Sentiment</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {task.urls.map((url) => {
                         const sentiment = getSentimentBadge(url.sentiment);
+                        const isEdited = Boolean(resultOverrides[url.id]);
 
                         return (
                           <TableRow key={url.id}>
@@ -301,6 +411,28 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
                             </TableCell>
                             <TableCell>
                               <Badge variant={sentiment.variant}>{sentiment.label}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex flex-wrap justify-end gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEditClick(url)}
+                                >
+                                  Edit
+                                </Button>
+                                {isEdited ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleResetResult(url.id)}
+                                  >
+                                    Reset to default
+                                  </Button>
+                                ) : null}
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
@@ -331,6 +463,80 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setIsDescriptionOpen(false)}>
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(editingResultId)} onOpenChange={(open) => {
+        if (!open) {
+          setEditingResultId(null);
+        }
+      }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit result</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="result-title">Title</Label>
+              <Input
+                id="result-title"
+                value={editForm.title}
+                onChange={(event) => setEditForm((current) => ({ ...current, title: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="result-url">URL</Label>
+              <Input
+                id="result-url"
+                value={editForm.url}
+                onChange={(event) => setEditForm((current) => ({ ...current, url: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="result-source">Source / Domain</Label>
+              <Input
+                id="result-source"
+                value={editForm.source}
+                onChange={(event) => setEditForm((current) => ({ ...current, source: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Sentiment</Label>
+              <Select
+                value={editForm.sentiment}
+                onValueChange={(value: QuerySentiment) =>
+                  setEditForm((current) => ({ ...current, sentiment: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select sentiment" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="positive">positive</SelectItem>
+                  <SelectItem value="negative">negative</SelectItem>
+                  <SelectItem value="neutral">neutral</SelectItem>
+                  <SelectItem value="invalid">invalid</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="result-snippet">Snippet</Label>
+              <Textarea
+                id="result-snippet"
+                value={editForm.snippet}
+                onChange={(event) => setEditForm((current) => ({ ...current, snippet: event.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditingResultId(null)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleSaveResult}>
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>

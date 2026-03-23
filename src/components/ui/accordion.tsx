@@ -21,21 +21,35 @@ export function AccordionItem({
   );
 }
 
+type AccordionTriggerProps = ComponentPropsWithoutRef<"summary"> & {
+  chevronPosition?: "left" | "right";
+};
+
 export function AccordionTrigger({
   className,
   children,
+  chevronPosition = "right",
   ...props
-}: ComponentPropsWithoutRef<"summary">) {
+}: AccordionTriggerProps) {
   return (
     <summary
       className={cn(
-        "flex cursor-pointer list-none items-start justify-between gap-4 px-4 py-4 [&::-webkit-details-marker]:hidden",
+        "flex cursor-pointer list-none items-start gap-4 px-4 py-4 [&::-webkit-details-marker]:hidden",
         className,
       )}
       {...props}
     >
-      <div className="min-w-0 flex-1">{children}</div>
-      <ChevronDown className="mt-1 size-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
+      {chevronPosition === "left" ? (
+        <>
+          <ChevronDown className="mt-1 size-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
+          <div className="min-w-0 flex-1">{children}</div>
+        </>
+      ) : (
+        <>
+          <div className="min-w-0 flex-1">{children}</div>
+          <ChevronDown className="mt-1 ml-auto size-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
+        </>
+      )}
     </summary>
   );
 }

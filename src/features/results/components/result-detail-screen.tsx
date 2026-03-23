@@ -5,12 +5,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, ExternalLink, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { BrandTabs } from "@/components/shared/brand-tabs";
 import { PageShell } from "@/components/shared/page-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingState } from "@/components/shared/loading-state";
 import { ErrorState } from "@/components/shared/error-state";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { AppTable } from "@/components/shared/app-table";
 import {
   Accordion,
   AccordionContent,
@@ -59,6 +59,7 @@ function getDomain(value: string) {
 }
 
 export function ResultDetailScreen({ runId }: { runId: string }) {
+  const [activeBrandId, setActiveBrandId] = useState("all");
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
   const [isDescriptionOverflowing, setIsDescriptionOverflowing] = useState(false);
   const descriptionRef = useRef<HTMLParagraphElement | null>(null);
@@ -100,6 +101,22 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
         return order.indexOf(left.status) - order.indexOf(right.status);
       }),
     [tasksQuery.data],
+  );
+
+  const brandsInRun = useMemo(() => {
+    const brandMap = new Map<string, { id: string; name: string }>();
+    sortedTasks.forEach((task) => {
+      if (!brandMap.has(task.brandId)) {
+        brandMap.set(task.brandId, { id: task.brandId, name: task.brandName });
+      }
+    });
+    return Array.from(brandMap.values());
+  }, [sortedTasks]);
+
+  const visibleTasks = useMemo(
+    () =>
+      sortedTasks.filter((task) => activeBrandId === "all" || task.brandId === activeBrandId),
+    [activeBrandId, sortedTasks],
   );
 
   if (runQuery.isLoading || tasksQuery.isLoading) {
@@ -180,6 +197,32 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
       ) : null}
 
       <section className="space-y-4">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveBrandId("all")}
+            className={
+              activeBrandId === "all"
+                ? "shrink-0 rounded-xl border border-[#f28c28] bg-[#f28c28] px-4 py-2 text-sm font-medium text-[#10131a]"
+                : "shrink-0 rounded-xl border border-white/10 bg-[#101a2c] px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:border-white/20 hover:text-white"
+            }
+          >
+            All brands
+          </button>
+          <BrandTabs
+            brands={brandsInRun.map((brand) => ({
+              id: brand.id,
+              tenantId: run.tenantId,
+              name: brand.name,
+              website: "",
+              industry: "",
+              createdAt: run.createdAt,
+            }))}
+            activeBrandId={activeBrandId}
+            onChange={setActiveBrandId}
+          />
+        </div>
+
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Tasks</h3>
           <p className="mt-2 text-sm text-slate-400">
@@ -188,86 +231,82 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
         </div>
 
         <Accordion>
-          {sortedTasks.map((task, index) => (
+          {visibleTasks.map((task, index) => (
             <AccordionItem
               key={task.id}
               className={getTaskOpacity(task.status)}
               open={index === 0 ? true : undefined}
             >
-              <AccordionTrigger>
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="font-medium text-white">{task.keyword}</span>
-                    <StatusBadge status={task.status} />
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-sm text-slate-400">
-                    <span>{task.brandName}</span>
-                    <span>•</span>
-                    <span>{task.countryName}</span>
-                    <span>•</span>
-                    <span>{task.languageName}</span>
-                  </div>
-                  {task.urls.length ? (
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300">
-                      <span>Positive: {task.summary.positive}</span>
-                      <span>Negative: {task.summary.negative}</span>
-                      <span>Neutral: {task.summary.neutral}</span>
+              <AccordionTrigger chevronPosition="left" className="items-center py-3">
+                <div className="overflow-x-auto">
+                  <div className="grid min-w-[840px] grid-cols-[minmax(0,2.4fr)_minmax(0,1.4fr)_minmax(0,1.4fr)_auto_auto_auto_auto] items-center gap-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-white">{task.keyword}</p>
                     </div>
-                  ) : null}
+                    <div className="min-w-0 text-slate-300">
+                      <p className="truncate">{task.brandName}</p>
+                    </div>
+                    <div className="min-w-0 text-slate-400">
+                      <p className="truncate">
+                        {task.countryName} / {task.languageName}
+                      </p>
+                    </div>
+                    <div className="justify-self-start">
+                      <StatusBadge status={task.status} />
+                    </div>
+                    <div className="whitespace-nowrap text-slate-300">P: {task.summary.positive}</div>
+                    <div className="whitespace-nowrap text-slate-300">N: {task.summary.negative}</div>
+                    <div className="whitespace-nowrap text-slate-300">U: {task.summary.neutral}</div>
+                  </div>
                 </div>
               </AccordionTrigger>
 
               <AccordionContent>
                 {task.urls.length ? (
-                  <AppTable
-                    title="Search results"
-                    description="The first 10 collected URLs and their sentiment classifications."
-                  >
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="whitespace-nowrap">Position</TableHead>
-                          <TableHead>Title / URL</TableHead>
-                          <TableHead className="whitespace-nowrap">Source/domain</TableHead>
-                          <TableHead className="whitespace-nowrap">Sentiment</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {task.urls.map((url) => {
-                          const sentiment = getSentimentBadge(url.sentiment);
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="whitespace-nowrap">Position</TableHead>
+                        <TableHead>Title / URL</TableHead>
+                        <TableHead className="whitespace-nowrap">Source/domain</TableHead>
+                        <TableHead className="whitespace-nowrap">Sentiment</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {task.urls.map((url) => {
+                        const sentiment = getSentimentBadge(url.sentiment);
 
-                          return (
-                            <TableRow key={url.id}>
-                              <TableCell>{url.position}</TableCell>
-                              <TableCell>
-                                <div className="max-w-[640px] space-y-1">
-                                  <a
-                                    href={url.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-2 font-medium text-white hover:text-[#ffb56e]"
-                                  >
-                                    <span className="truncate">{url.title}</span>
-                                    <ExternalLink className="size-4 shrink-0" />
-                                  </a>
-                                  <p className="truncate text-xs text-slate-400">{url.url}</p>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="space-y-1">
-                                  <p className="text-sm text-slate-200">{url.source}</p>
-                                  <p className="text-xs text-slate-500">{getDomain(url.url)}</p>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={sentiment.variant}>{sentiment.label}</Badge>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </AppTable>
+                        return (
+                          <TableRow key={url.id}>
+                            <TableCell>{url.position}</TableCell>
+                            <TableCell>
+                              <div className="max-w-[640px] space-y-1">
+                                <a
+                                  href={url.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-2 font-medium text-white hover:text-[#ffb56e]"
+                                >
+                                  <span className="truncate">{url.title}</span>
+                                  <ExternalLink className="size-4 shrink-0" />
+                                </a>
+                                <p className="truncate text-xs text-slate-400">{url.url}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <p className="text-sm text-slate-200">{url.source}</p>
+                                <p className="text-xs text-slate-500">{getDomain(url.url)}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={sentiment.variant}>{sentiment.label}</Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
                 ) : (
                   <div className="rounded-xl border border-white/8 bg-[#08111d] px-4 py-4 text-sm text-slate-400">
                     Results are still being collected.

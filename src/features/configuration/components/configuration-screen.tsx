@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
-import { ArrowRight, Pencil, Trash2, X } from "lucide-react";
+import { ArrowRight, Check, Pencil, Trash2, X } from "lucide-react";
 import { AddBrandModal } from "@/components/shared/add-brand-modal";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageShell } from "@/components/shared/page-shell";
@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { configurationApi } from "@/features/configuration/api/configuration-api";
 import { brandSchema, configRowSchema, type BrandSchema, type ConfigRowSchema } from "@/features/configuration/schemas/configuration-schema";
 
@@ -382,45 +383,74 @@ export function ConfigurationScreen() {
                       <TableCell>{row.geolocation ?? "-"}</TableCell>
                       <TableCell>{renderKeywordBadges(row.keywords)}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
+                        <TooltipProvider>
+                          <div className="flex items-center gap-2">
                           {row.runId ? (
-                            <span className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                              Assigned
-                            </span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center justify-center">
+                                  <Check className="size-4 text-emerald-400" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Assigned to run</TooltipContent>
+                            </Tooltip>
                           ) : (
-                            <button
-                              type="button"
-                              aria-label="Add task to run"
-                              onClick={() => {
-                                setAssigningTaskId(row.id);
-                                setSelectedRunId(runsQuery.data?.[0]?.id ?? "");
-                              }}
-                            >
-                              <ArrowRight className="size-4 text-amber-300" />
-                            </button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  aria-label="Add task to run"
+                                  className="cursor-pointer transition-opacity hover:opacity-80"
+                                  onClick={() => {
+                                    setAssigningTaskId(row.id);
+                                    setSelectedRunId(runsQuery.data?.[0]?.id ?? "");
+                                  }}
+                                >
+                                  <ArrowRight className="size-4 text-amber-300" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>Add to run</TooltipContent>
+                            </Tooltip>
                           )}
-                          <button
-                            type="button"
-                            aria-label="Edit Task"
-                            onClick={() => {
-                              setEditingTaskId(row.id);
-                              editTaskForm.reset({
-                                countryCode: row.countryCode,
-                                countryName: row.countryName,
-                                languageCode: row.languageCode,
-                                languageName: row.languageName,
-                                geolocation: row.geolocation ?? "",
-                                keywords: row.keywords,
-                              });
-                              setEditKeywordsInput("");
-                            }}
-                          >
-                            <Pencil className="size-4 text-slate-300" />
-                          </button>
-                          <button type="button" aria-label="Delete Task" onClick={() => deleteRowMutation.mutate(row.id)}>
-                            <Trash2 className="size-4 text-rose-300" />
-                          </button>
-                        </div>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                aria-label="Edit Task"
+                                className="cursor-pointer transition-opacity hover:opacity-80"
+                                onClick={() => {
+                                  setEditingTaskId(row.id);
+                                  editTaskForm.reset({
+                                    countryCode: row.countryCode,
+                                    countryName: row.countryName,
+                                    languageCode: row.languageCode,
+                                    languageName: row.languageName,
+                                    geolocation: row.geolocation ?? "",
+                                    keywords: row.keywords,
+                                  });
+                                  setEditKeywordsInput("");
+                                }}
+                              >
+                                <Pencil className="size-4 text-slate-300" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                aria-label="Delete Task"
+                                className="cursor-pointer transition-opacity hover:opacity-80"
+                                onClick={() => deleteRowMutation.mutate(row.id)}
+                              >
+                                <Trash2 className="size-4 text-rose-300" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Delete</TooltipContent>
+                          </Tooltip>
+                          </div>
+                        </TooltipProvider>
                       </TableCell>
                     </TableRow>
                   ))}

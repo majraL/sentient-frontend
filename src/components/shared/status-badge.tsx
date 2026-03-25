@@ -1,68 +1,50 @@
-import { AlertTriangle, LoaderCircle, Search, Sparkles, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils/cn";
+import {
+  normalizeRunStatus,
+  runStatusConfig,
+  subscriptionStatusConfig,
+  systemStatusConfig,
+  taskExecutionStatusConfig,
+} from "@/lib/constants/status-config";
+
+type StatusBadgeCategory = "run" | "task" | "system" | "subscription";
 
 type StatusBadgeProps = {
   status: string;
+  category: StatusBadgeCategory;
 };
 
-const variantMap: Record<string, "default" | "success" | "warning" | "danger" | "info" | "muted"> = {
-  queued: "warning",
-  ready: "info",
-  scheduled: "warning",
-  pending: "muted",
-  searching: "info",
-  analyzing: "warning",
-  done: "success",
-  completed: "success",
-  failed: "danger",
-  healthy: "success",
-  degraded: "warning",
-  down: "danger",
-  trialing: "info",
-  past_due: "warning",
-};
-
-const labels: Record<string, string> = {
-  pending: "Pending",
-  ready: "Ready",
-  scheduled: "Scheduled",
-  searching: "Searching",
-  analyzing: "Analyzing",
-  done: "Done",
-  queued: "Queued",
-  completed: "Completed",
-  failed: "Failed",
-  healthy: "Healthy",
-  degraded: "Degraded",
-  down: "Down",
-  trialing: "Trialing",
-  past_due: "Past Due",
-};
-
-const icons = {
-  pending: AlertTriangle,
-  ready: LoaderCircle,
-  scheduled: LoaderCircle,
-  searching: Search,
-  analyzing: Sparkles,
-  done: Sparkles,
-  queued: LoaderCircle,
-  completed: Sparkles,
-  failed: XCircle,
-  healthy: Sparkles,
-  degraded: AlertTriangle,
-  down: XCircle,
-  trialing: LoaderCircle,
-  past_due: AlertTriangle,
-};
-
-export function StatusBadge({ status }: StatusBadgeProps) {
-  const Icon = icons[status as keyof typeof icons];
+export function StatusBadge({ status, category }: StatusBadgeProps) {
+  const config = getStatusConfig(status, category);
+  const Icon = config.icon;
 
   return (
-    <Badge variant={variantMap[status] ?? "default"} className="gap-1.5 px-2 py-0.5 text-[11px]">
-      {Icon ? <Icon className="size-3.5" /> : null}
-      <span>{labels[status] ?? status.replace("_", " ")}</span>
+    <Badge
+      variant={config.variant}
+      className={cn(
+        "h-6 gap-1.5 px-2 py-0.5 text-[11px] font-medium normal-case",
+        config.className,
+      )}
+    >
+      <Icon className={cn("size-3.5 shrink-0", config.iconClassName)} />
+      <span>{config.label}</span>
     </Badge>
   );
+}
+
+function getStatusConfig(status: string, category: StatusBadgeCategory) {
+  if (category === "run") {
+    return runStatusConfig[normalizeRunStatus(status)];
+  }
+
+  if (category === "task") {
+    return taskExecutionStatusConfig[status as keyof typeof taskExecutionStatusConfig] ?? taskExecutionStatusConfig.pending;
+  }
+
+  if (category === "system") {
+    return systemStatusConfig[status as keyof typeof systemStatusConfig] ?? systemStatusConfig.degraded;
+  }
+
+  return subscriptionStatusConfig[status as keyof typeof subscriptionStatusConfig] ?? subscriptionStatusConfig.cancelled;
 }

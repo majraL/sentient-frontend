@@ -6,10 +6,12 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { BrandTabs } from "@/components/shared/brand-tabs";
+import { MetaBadge } from "@/components/shared/meta-badge";
 import { PageShell } from "@/components/shared/page-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { LoadingState } from "@/components/shared/loading-state";
 import { ErrorState } from "@/components/shared/error-state";
+import { SentimentBadge } from "@/components/shared/sentiment-badge";
 import { StatusBadge } from "@/components/shared/status-badge";
 import {
   Accordion,
@@ -17,7 +19,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -37,18 +38,6 @@ import { formatDateTime } from "@/lib/utils/dates";
 import type { QueryResultUrl, QuerySentiment } from "@/types/api";
 
 type EditableResultFields = Pick<QueryResultUrl, "title" | "url" | "source" | "sentiment" | "snippet">;
-
-function getSentimentBadge(sentiment: QuerySentiment) {
-  if (sentiment === "positive") {
-    return { label: "Positive :)", variant: "success" as const };
-  }
-
-  if (sentiment === "negative") {
-    return { label: "Negative :(", variant: "danger" as const };
-  }
-
-  return { label: "Neutral", variant: "muted" as const };
-}
 
 function getTaskOpacity(status: string) {
   return status === "searching" || status === "analyzing" || status === "pending"
@@ -280,7 +269,7 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
         }
         actions={
           <div className="flex flex-wrap items-center justify-end gap-3">
-            <StatusBadge status={run.status} />
+            <StatusBadge status={run.status} category="run" />
             <div className="rounded-xl border border-white/8 bg-[#0a1321] px-3 py-2 text-xs text-slate-300">
               Started: {formatDateTime(run.startedAt)}
             </div>
@@ -360,7 +349,7 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
                       </p>
                     </div>
                     <div className="justify-self-start">
-                      <StatusBadge status={task.status} />
+                      <StatusBadge status={task.status} category="task" />
                     </div>
                     <div className="whitespace-nowrap text-slate-300">P: {task.summary.positive}</div>
                     <div className="whitespace-nowrap text-slate-300">N: {task.summary.negative}</div>
@@ -383,7 +372,6 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
                     </TableHeader>
                     <TableBody>
                       {task.urls.map((url) => {
-                        const sentiment = getSentimentBadge(url.sentiment);
                         const isEdited = Boolean(resultOverrides[url.id]);
 
                         return (
@@ -410,10 +398,11 @@ export function ResultDetailScreen({ runId }: { runId: string }) {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={sentiment.variant}>{sentiment.label}</Badge>
+                              <SentimentBadge sentiment={url.sentiment} />
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex flex-wrap justify-end gap-2">
+                                {isEdited ? <MetaBadge status="edited" /> : null}
                                 <Button
                                   type="button"
                                   size="sm"

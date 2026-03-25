@@ -41,7 +41,7 @@ export function AdminClientsScreen() {
             {query.data.map((client) => (
               <TableRow key={client.id}>
                 <TableCell className="font-medium">{client.companyName}</TableCell>
-                <TableCell><StatusBadge status={client.subscriptionStatus} /></TableCell>
+                <TableCell><StatusBadge status={client.subscriptionStatus} category="subscription" /></TableCell>
                 <TableCell>{client.seatCount}</TableCell>
                 <TableCell>{client.billingEmail}</TableCell>
               </TableRow>

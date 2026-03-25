@@ -182,8 +182,6 @@ export function RunsScreen() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="queued">Queued</SelectItem>
-                <SelectItem value="ready">Ready</SelectItem>
                 <SelectItem value="running">Running</SelectItem>
                 <SelectItem value="scheduled">Scheduled</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
@@ -218,7 +216,7 @@ export function RunsScreen() {
                 </TableCell>
                 <TableCell>
                   <div className="space-y-1">
-                    <StatusBadge status={run.status} />
+                    <StatusBadge status={run.status} category="run" />
                     {run.status === "scheduled" && run.scheduledFor ? (
                       <p className="text-xs text-slate-400">Start: {formatDateTime(run.scheduledFor)}</p>
                     ) : null}
@@ -244,9 +242,6 @@ export function RunsScreen() {
                         Start now
                       </Button>
                     ) : null}
-                    {run.status === "running" ? (
-                      <span className="text-xs text-slate-500">In progress</span>
-                    ) : null}
                     {run.status === "failed" ? (
                       <span className="text-xs text-slate-500">Review available</span>
                     ) : null}
@@ -254,9 +249,11 @@ export function RunsScreen() {
                       <Button asChild type="button" size="sm" variant="ghost">
                         <Link href={getRunRoute(run.id)}>View Run</Link>
                       </Button>
-                      <Button asChild type="button" size="sm" variant="outline">
-                        <Link href={getResultsRoute(run.id)}>View results</Link>
-                      </Button>
+                      {run.status !== "scheduled" ? (
+                        <Button asChild type="button" size="sm" variant="outline">
+                          <Link href={getResultsRoute(run.id)}>View results</Link>
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 </TableCell>

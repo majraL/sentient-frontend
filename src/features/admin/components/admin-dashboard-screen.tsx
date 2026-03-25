@@ -45,7 +45,7 @@ export function AdminDashboardScreen() {
         <div className="rounded-2xl border border-white/10 bg-[#0d1626]/95 p-5">
           <p className="text-sm text-slate-500">API status</p>
           <div className="mt-3">
-            <StatusBadge status={query.data.systemHealth.apiStatus} />
+            <StatusBadge status={query.data.systemHealth.apiStatus} category="system" />
           </div>
         </div>
       </section>
@@ -66,7 +66,7 @@ export function AdminDashboardScreen() {
                 <TableRow key={run.id}>
                   <TableCell className="font-medium">{run.name}</TableCell>
                   <TableCell>{run.brandName}</TableCell>
-                  <TableCell><StatusBadge status={run.status} /></TableCell>
+                  <TableCell><StatusBadge status={run.status} category="run" /></TableCell>
                   <TableCell>{run.completedQueries}/{run.totalQueries}</TableCell>
                 </TableRow>
               ))}

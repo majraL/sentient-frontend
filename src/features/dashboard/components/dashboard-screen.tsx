@@ -225,7 +225,7 @@ export function DashboardScreen() {
                     <TableCell>{row.countryName}</TableCell>
                     <TableCell>{row.languageName}</TableCell>
                     <TableCell>{row.keyword}</TableCell>
-                    <TableCell><StatusBadge status={row.status} /></TableCell>
+                    <TableCell><StatusBadge status={row.status} category="task" /></TableCell>
                     <TableCell>
                       <ProcessingCellOverlay active={isProcessing(row)} label={row.status}>
                         <div>

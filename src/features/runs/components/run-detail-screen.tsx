@@ -152,7 +152,7 @@ export function RunDetailScreen({ runId }: { runId: string }) {
         <RunSummaryCard run={runQuery.data} />
         <ErrorState
           title="No run details yet"
-          description="This run is ready, but no execution results have been generated yet."
+          description="This run is scheduled, but no execution results have been generated yet."
           onRetry={() => {
             runQuery.refetch();
             queryResults.refetch();
@@ -265,7 +265,7 @@ export function RunDetailScreen({ runId }: { runId: string }) {
                   <TableCell className="font-medium">{result.keyword}</TableCell>
                   <TableCell>{result.countryName}</TableCell>
                   <TableCell>{result.languageName}</TableCell>
-                  <TableCell><StatusBadge status={result.status} /></TableCell>
+                  <TableCell><StatusBadge status={result.status} category="task" /></TableCell>
                   <TableCell>
                     <ProcessingCellOverlay active={isProcessingStatus(result.status)} label={result.status}>
                       <span>{result.status === "done" ? result.score.toFixed(2) : "—"}</span>

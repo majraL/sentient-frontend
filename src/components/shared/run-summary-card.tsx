@@ -18,7 +18,7 @@ export function RunSummaryCard({ run }: { run: Run }) {
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Status</p>
           <div className="mt-2">
-            <StatusBadge status={run.status} />
+            <StatusBadge status={run.status} category="run" />
           </div>
         </div>
       </CardContent>

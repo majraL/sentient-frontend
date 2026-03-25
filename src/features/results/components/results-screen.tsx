@@ -115,7 +115,7 @@ export function ResultsScreen() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <StatusBadge status={run.status} />
+                  <StatusBadge status={run.status} category="run" />
                 </TableCell>
                 <TableCell className="whitespace-nowrap">{formatDateTime(run.createdAt)}</TableCell>
                 <TableCell>{run.taskIds.length}</TableCell>
@@ -132,7 +132,7 @@ export function ResultsScreen() {
                   ) : null}
                   {run.status === "scheduled" ? (
                     <Button size="sm" variant="outline" disabled>
-                      Pending
+                      Scheduled
                     </Button>
                   ) : null}
                   {run.status === "failed" ? (

@@ -6,9 +6,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
-import { ArrowRight, Check, Pencil, Trash2, X } from "lucide-react";
+import { ArrowRight, Pencil, Trash2, X } from "lucide-react";
 import { AddBrandModal } from "@/components/shared/add-brand-modal";
 import { EmptyState } from "@/components/shared/empty-state";
+import { MetaBadge } from "@/components/shared/meta-badge";
 import { PageShell } from "@/components/shared/page-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { BrandTabs } from "@/components/shared/brand-tabs";
@@ -372,6 +373,7 @@ export function ConfigurationScreen() {
                     <TableHead>Language</TableHead>
                     <TableHead>Geolocation</TableHead>
                     <TableHead>Keywords</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="w-24">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -383,72 +385,66 @@ export function ConfigurationScreen() {
                       <TableCell>{row.geolocation ?? "-"}</TableCell>
                       <TableCell>{renderKeywordBadges(row.keywords)}</TableCell>
                       <TableCell>
+                        {row.runId ? <MetaBadge status="assigned" /> : <span className="text-sm text-slate-500">-</span>}
+                      </TableCell>
+                      <TableCell>
                         <TooltipProvider>
                           <div className="flex items-center gap-2">
-                          {row.runId ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="inline-flex items-center justify-center">
-                                  <Check className="size-4 text-emerald-400" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>Assigned to run</TooltipContent>
-                            </Tooltip>
-                          ) : (
+                            {!row.runId ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    aria-label="Add task to run"
+                                    className="cursor-pointer transition-opacity hover:opacity-80"
+                                    onClick={() => {
+                                      setAssigningTaskId(row.id);
+                                      setSelectedRunId(runsQuery.data?.[0]?.id ?? "");
+                                    }}
+                                  >
+                                    <ArrowRight className="size-4 text-amber-300" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>Add to run</TooltipContent>
+                              </Tooltip>
+                            ) : null}
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
-                                  aria-label="Add task to run"
+                                  aria-label="Edit Task"
                                   className="cursor-pointer transition-opacity hover:opacity-80"
                                   onClick={() => {
-                                    setAssigningTaskId(row.id);
-                                    setSelectedRunId(runsQuery.data?.[0]?.id ?? "");
+                                    setEditingTaskId(row.id);
+                                    editTaskForm.reset({
+                                      countryCode: row.countryCode,
+                                      countryName: row.countryName,
+                                      languageCode: row.languageCode,
+                                      languageName: row.languageName,
+                                      geolocation: row.geolocation ?? "",
+                                      keywords: row.keywords,
+                                    });
+                                    setEditKeywordsInput("");
                                   }}
                                 >
-                                  <ArrowRight className="size-4 text-amber-300" />
+                                  <Pencil className="size-4 text-slate-300" />
                                 </button>
                               </TooltipTrigger>
-                              <TooltipContent>Add to run</TooltipContent>
+                              <TooltipContent>Edit</TooltipContent>
                             </Tooltip>
-                          )}
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                aria-label="Edit Task"
-                                className="cursor-pointer transition-opacity hover:opacity-80"
-                                onClick={() => {
-                                  setEditingTaskId(row.id);
-                                  editTaskForm.reset({
-                                    countryCode: row.countryCode,
-                                    countryName: row.countryName,
-                                    languageCode: row.languageCode,
-                                    languageName: row.languageName,
-                                    geolocation: row.geolocation ?? "",
-                                    keywords: row.keywords,
-                                  });
-                                  setEditKeywordsInput("");
-                                }}
-                              >
-                                <Pencil className="size-4 text-slate-300" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>Edit</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                aria-label="Delete Task"
-                                className="cursor-pointer transition-opacity hover:opacity-80"
-                                onClick={() => deleteRowMutation.mutate(row.id)}
-                              >
-                                <Trash2 className="size-4 text-rose-300" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>Delete</TooltipContent>
-                          </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  aria-label="Delete Task"
+                                  className="cursor-pointer transition-opacity hover:opacity-80"
+                                  onClick={() => deleteRowMutation.mutate(row.id)}
+                                >
+                                  <Trash2 className="size-4 text-rose-300" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>Delete</TooltipContent>
+                            </Tooltip>
                           </div>
                         </TooltipProvider>
                       </TableCell>

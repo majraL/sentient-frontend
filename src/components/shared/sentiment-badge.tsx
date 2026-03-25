@@ -1,27 +1,24 @@
-import { Frown, Meh, Minus, Smile } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils/cn";
+import { sentimentStatusConfig } from "@/lib/constants/status-config";
 import type { QuerySentiment } from "@/types/api";
 
 type SentimentBadgeProps = {
   sentiment: QuerySentiment;
 };
 
-const config: Record<
-  QuerySentiment,
-  { label: string; variant: "success" | "danger" | "muted"; icon: typeof Smile }
-> = {
-  positive: { label: "Positive", variant: "success", icon: Smile },
-  negative: { label: "Negative", variant: "danger", icon: Frown },
-  neutral: { label: "Neutral", variant: "muted", icon: Meh },
-  invalid: { label: "Invalid", variant: "muted", icon: Minus },
-};
-
 export function SentimentBadge({ sentiment }: SentimentBadgeProps) {
-  const { label, variant, icon: Icon } = config[sentiment];
+  const { label, variant, icon: Icon, className, iconClassName } = sentimentStatusConfig[sentiment];
 
   return (
-    <Badge variant={variant} className="gap-1.5 px-2 py-0.5 text-[11px]">
-      <Icon className="size-3.5" />
+    <Badge
+      variant={variant}
+      className={cn(
+        "h-6 gap-1.5 px-2 py-0.5 text-[11px] font-medium normal-case",
+        className,
+      )}
+    >
+      <Icon className={cn("size-3.5 shrink-0", iconClassName)} />
       <span>{label}</span>
     </Badge>
   );

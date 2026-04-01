@@ -14,6 +14,7 @@ type AuthContextValue = {
   session: Session | null;
   loading: boolean;
   login: (payload: LoginPayload) => Promise<Session>;
+  updateUser: (updates: Partial<SessionUser>) => void;
   logout: () => void;
 };
 
@@ -55,6 +56,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(nextSession);
         toast.success("Signed in successfully");
         return nextSession;
+      },
+      updateUser(updates) {
+        setSession((current) => {
+          if (!current) {
+            return current;
+          }
+
+          const nextSession = {
+            ...current,
+            user: {
+              ...current.user,
+              ...updates,
+            },
+          };
+
+          persistSession(nextSession);
+          return nextSession;
+        });
       },
       logout() {
         clearStoredSession();

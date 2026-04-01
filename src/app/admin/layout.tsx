@@ -9,8 +9,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <AppShell
         navItems={ADMIN_NAV_ITEMS}
         mode="admin"
-        title="Admin console"
-        subtitle="Monitor clients, settings, and platform health."
       >
         {children}
       </AppShell>

@@ -9,8 +9,6 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
       <AppShell
         navItems={CLIENT_NAV_ITEMS}
         mode="client"
-        title="Sentient workspace"
-        subtitle="Run query workflows, maintain configuration, and review sentiment results."
       >
         {children}
       </AppShell>

@@ -81,12 +81,15 @@ function clearTenantDataCollections() {
   runQueryResults.splice(0, runQueryResults.length);
 }
 
-function buildSessionUser(email: string): SessionUser {
+function buildSessionUser(email: string, workspaceName?: string): SessionUser {
+  const resolvedWorkspaceName = workspaceName?.trim() || accountProfile.workspaceName || "Sentient Workspace";
+
   if (email === "admin@sentient.app") {
     return {
       id: "user_admin",
       name: "Platform Admin",
       email,
+      workspaceName: resolvedWorkspaceName,
       role: "admin",
       tenantId: null,
     };
@@ -97,6 +100,7 @@ function buildSessionUser(email: string): SessionUser {
     id: user.id,
     name: user.name,
     email,
+    workspaceName: resolvedWorkspaceName,
     role: "client_admin",
     tenantId: currentTenantId,
   };
@@ -186,11 +190,17 @@ function setRunAggregate(runId: string) {
 }
 
 export async function login(payload: LoginPayload): Promise<Session> {
-  if (!payload.email || !payload.password) {
-    throw new ApiError("Email and password are required", 400);
+  if (!payload.workspaceName || !payload.email || !payload.password) {
+    throw new ApiError("Workspace name, email, and password are required", 400);
   }
+
+  const normalizedEmail = payload.email.trim().toLowerCase();
+  const workspaceName = payload.workspaceName.trim();
+
+  accountProfile.workspaceName = workspaceName;
+
   return simulate({
-    user: buildSessionUser(payload.email.trim().toLowerCase()),
+    user: buildSessionUser(normalizedEmail, workspaceName),
     loggedInAt: new Date().toISOString(),
   });
 }
@@ -1302,6 +1312,11 @@ export async function getAccountProfile() {
 
 export async function updateAccountProfile(payload: AccountProfileFormValues) {
   Object.assign(accountProfile, payload);
+  const currentUser = users.find((user) => user.id === accountProfile.id || user.tenantId === accountProfile.tenantId);
+  if (currentUser) {
+    currentUser.name = payload.name;
+    currentUser.email = payload.email;
+  }
   return simulate(accountProfile);
 }
 

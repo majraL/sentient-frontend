@@ -11,25 +11,22 @@ type AppShellProps = PropsWithChildren<{
     label: string;
   }>;
   mode: "client" | "admin";
-  title: string;
-  subtitle: string;
 }>;
 
 export function AppShell({
   children,
   navItems,
   mode,
-  title,
-  subtitle,
 }: AppShellProps) {
   const { user } = useAuth();
+  const workspaceTitle = user?.workspaceName?.trim() || "Sentient Workspace";
 
   return (
     <div className="min-h-screen bg-[#07101d] text-slate-100">
       <div className="flex min-h-screen">
         <AppSidebar navItems={navItems} user={user} mode={mode} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <AppHeader title={title} subtitle={subtitle} />
+          <AppHeader title={workspaceTitle} />
           <main className="flex-1 px-4 py-6 md:px-6">{children}</main>
         </div>
       </div>

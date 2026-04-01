@@ -132,6 +132,7 @@ export type RunResultTaskGroup = {
 export type AccountProfile = {
   id: EntityId;
   tenantId: string;
+  workspaceName: string;
   companyName: string;
   name: string;
   email: string;
@@ -176,6 +177,7 @@ export type AdminDashboard = {
 export type LoginPayload = {
   email: string;
   password: string;
+  workspaceName: string;
 };
 
 export type BrandFormValues = Pick<Brand, "name" | "website" | "industry">;
@@ -187,7 +189,7 @@ export type BrandConfigRowFormValues = Pick<
 
 export type AccountProfileFormValues = Pick<
   AccountProfile,
-  "companyName" | "name" | "email"
+  "workspaceName" | "companyName" | "name" | "email"
 >;
 
 export type DashboardQuerySummary = {

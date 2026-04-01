@@ -64,6 +64,7 @@ export const runQueryResults: RunQueryResult[] = [];
 export const accountProfile: AccountProfile = {
   id: currentAccountId,
   tenantId: currentTenantId,
+  workspaceName: "Alpine Signals Workspace",
   companyName: "Alpine Retail Group",
   name: "Ana Kovac",
   email: "ana@alpineretail.com",

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { LockKeyhole, Mail } from "lucide-react";
+import { Building2, LockKeyhole, Mail } from "lucide-react";
 import { APP_NAME, APP_SUBTITLE } from "@/lib/constants/app";
 import { ROUTES } from "@/lib/constants/routes";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,7 @@ export function LoginScreen() {
   const form = useForm<LoginSchema>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
+      workspaceName: "Sentient Workspace",
       email: "ana@alpineretail.com",
       password: "password123",
     },
@@ -48,6 +49,14 @@ export function LoginScreen() {
         </CardHeader>
         <CardContent>
           <form className="space-y-5" onSubmit={onSubmit}>
+            <div className="space-y-2">
+              <Label htmlFor="workspaceName">Workspace name</Label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
+                <Input id="workspaceName" className="pl-9" {...form.register("workspaceName")} />
+              </div>
+              <p className="text-sm text-rose-300">{form.formState.errors.workspaceName?.message}</p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">

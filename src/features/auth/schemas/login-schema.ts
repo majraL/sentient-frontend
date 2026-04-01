@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const loginSchema = z.object({
+  workspaceName: z.string().min(2, "Workspace name is required"),
   email: z.email("Enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });

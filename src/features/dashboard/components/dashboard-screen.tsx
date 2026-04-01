@@ -100,11 +100,6 @@ export function DashboardScreen() {
     },
   });
 
-  const saveReportMutation = useMutation({
-    mutationFn: () => dashboardApi.saveReport(resolvedBrandId),
-    onSuccess: () => toast.success("Report saved"),
-  });
-
   const selectedCount = rowsQuery.data?.filter((row) => row.selected).length ?? 0;
   const activeRow = rowsQuery.data?.find((row) => row.id === resolvedActiveRowId) ?? null;
 
@@ -186,7 +181,6 @@ export function DashboardScreen() {
           await runSearchMutation.mutateAsync();
           await analyzeMutation.mutateAsync();
         }}
-        onSaveReport={() => saveReportMutation.mutate()}
         disabled={!selectedCount}
       />
 

@@ -4,6 +4,7 @@ export type SessionUser = {
   id: string;
   name: string;
   email: string;
+  workspaceName: string;
   role: UserRole;
   tenantId: string | null;
 };

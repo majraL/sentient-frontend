@@ -8,7 +8,6 @@ type QuerySelectionToolbarProps = {
   usePreviousResults: boolean;
   onUsePreviousResultsChange: (checked: boolean) => void;
   onSearchAndAnalyze: () => void;
-  onSaveReport: () => void;
   disabled?: boolean;
 };
 
@@ -17,7 +16,6 @@ export function QuerySelectionToolbar({
   usePreviousResults,
   onUsePreviousResultsChange,
   onSearchAndAnalyze,
-  onSaveReport,
   disabled,
 }: QuerySelectionToolbarProps) {
   return (
@@ -36,9 +34,6 @@ export function QuerySelectionToolbar({
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={onSearchAndAnalyze} disabled={disabled}>
           Search and Analyze
-        </Button>
-        <Button variant="outline" onClick={onSaveReport} disabled={disabled}>
-          Save Report
         </Button>
       </div>
     </div>

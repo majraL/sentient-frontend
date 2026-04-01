@@ -31,6 +31,7 @@ export function ConfigurationScreen() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [assigningTaskId, setAssigningTaskId] = useState<string | null>(null);
   const [isNewBrandOpen, setIsNewBrandOpen] = useState(false);
@@ -136,6 +137,18 @@ export function ConfigurationScreen() {
     router.replace(`${pathname}?brandId=${brandId}`);
   }
 
+  function resetCreateTaskForm() {
+    rowForm.reset({
+      countryCode: "",
+      countryName: "",
+      languageCode: "",
+      languageName: "",
+      geolocation: "",
+      keywords: [],
+    });
+    setCreateKeywordsInput("");
+  }
+
   const updateBrandMutation = useMutation({
     mutationFn: (values: BrandSchema) => configurationApi.updateBrand(resolvedBrandId, values),
     onSuccess: async () => {
@@ -149,15 +162,8 @@ export function ConfigurationScreen() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["brand-config-rows", resolvedBrandId] });
       await queryClient.invalidateQueries({ queryKey: ["dashboard-query-rows", resolvedBrandId] });
-      rowForm.reset({
-        countryCode: "",
-        countryName: "",
-        languageCode: "",
-        languageName: "",
-        geolocation: "",
-        keywords: [],
-      });
-      setCreateKeywordsInput("");
+      resetCreateTaskForm();
+      setIsCreateTaskOpen(false);
       toast.success("Task added");
     },
   });
@@ -256,115 +262,38 @@ export function ConfigurationScreen() {
         onChange={selectBrand}
       />
 
-      <section className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+      <section className="space-y-6">
         <SectionCard title="Brand details" description="Basic info for the active brand.">
           <form className="space-y-4" onSubmit={brandForm.handleSubmit((values) => updateBrandMutation.mutate(values))}>
-            <div className="space-y-2">
-              <Label>Name</Label>
-              <Input {...brandForm.register("name")} />
-            </div>
-            <div className="space-y-2">
-              <Label>Website</Label>
-              <Input {...brandForm.register("website")} />
-            </div>
-            <div className="space-y-2">
-              <Label>Industry</Label>
-              <Input {...brandForm.register("industry")} />
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Name</Label>
+                <Input {...brandForm.register("name")} />
+              </div>
+              <div className="space-y-2">
+                <Label>Website</Label>
+                <Input {...brandForm.register("website")} />
+              </div>
+              <div className="space-y-2">
+                <Label>Industry</Label>
+                <Input {...brandForm.register("industry")} />
+              </div>
             </div>
             <Button type="submit">Save brand</Button>
           </form>
         </SectionCard>
 
-        <div className="space-y-6">
-          <SectionCard
-            title="Add Task"
-            description="Create a task for the selected brand with country, language, geolocation, and keywords."
-          >
-            <div id="task-form" className="mb-4 rounded-2xl border border-white/8 bg-[#0a1321] p-4">
-              <p className="text-sm font-medium text-white">
-                {brandsQuery.data.find((brand) => brand.id === resolvedBrandId)?.name}
-              </p>
-              <p className="mt-1 text-sm text-slate-400">
-                Add a new task first, then review the full task list below.
-              </p>
+        <SectionCard
+          title="Task List"
+          description="Review and remove existing tasks for the selected brand."
+          actions={(
+            <div id="task-form">
+              <Button type="button" onClick={() => setIsCreateTaskOpen(true)}>
+                Add Task
+              </Button>
             </div>
-
-            <form
-              className="grid gap-4 rounded-2xl border border-white/8 bg-[#0a1321] p-4 md:grid-cols-2"
-              onSubmit={rowForm.handleSubmit((values) =>
-                addRowMutation.mutate({
-                  ...values,
-                  geolocation: values.geolocation || null,
-                  keywords: finalizeKeywords(createKeywords, createKeywordsInput),
-                })
-              )}
-            >
-              <div className="space-y-2">
-                <Label>Country code</Label>
-                <Input {...countryCodeField} placeholder="CH" />
-              </div>
-              <div className="space-y-2">
-                <Label>Country name</Label>
-                <Input {...rowForm.register("countryName")} placeholder="Switzerland" />
-              </div>
-              <div className="space-y-2">
-                <Label>Language code</Label>
-                <Input {...rowForm.register("languageCode")} placeholder="en" />
-              </div>
-              <div className="space-y-2">
-                <Label>Language name</Label>
-                <Input {...rowForm.register("languageName")} placeholder="English" />
-              </div>
-              <div className="space-y-2">
-                <Label>Geolocation</Label>
-                <Input {...rowForm.register("geolocation")} placeholder="Zurich" />
-              </div>
-              <div className="space-y-2">
-                <Label>Keywords</Label>
-                <div className="space-y-3">
-                  {createKeywords.length ? (
-                    <div className="flex flex-wrap gap-2">
-                      {createKeywords.map((keyword) => (
-                        <Badge key={keyword} className="gap-1">
-                          <span>{keyword}</span>
-                          <button
-                            type="button"
-                            className="rounded-full hover:text-white"
-                            onClick={() =>
-                              removeKeyword(
-                                createKeywords,
-                                (keywords) => rowForm.setValue("keywords", keywords, { shouldValidate: true }),
-                                keyword,
-                              )
-                            }
-                          >
-                            <X className="size-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : null}
-                  <Input
-                    value={createKeywordsInput}
-                    placeholder="brand name, brand review, is brand legit"
-                    onChange={(event) => {
-                      const nextState = buildKeywordInputState(createKeywords, event.target.value);
-                      setCreateKeywordsInput(nextState.inputValue);
-                      rowForm.setValue("keywords", nextState.keywords, { shouldValidate: true });
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="md:col-span-2">
-                <Button type="submit">Add Task</Button>
-              </div>
-            </form>
-          </SectionCard>
-
-          <SectionCard
-            title="Task List"
-            description="Review and remove existing tasks for the selected brand."
-          >
+          )}
+        >
             {rowsQuery.data.length ? (
               <Table>
                 <TableHeader>
@@ -455,12 +384,114 @@ export function ConfigurationScreen() {
             ) : (
               <EmptyState
                 title="No tasks yet"
-                description="Add your first task above to begin."
+                description="Create your first task for this brand."
+                action={(
+                  <Button type="button" onClick={() => setIsCreateTaskOpen(true)}>
+                    Add Task
+                  </Button>
+                )}
               />
             )}
-          </SectionCard>
-        </div>
+        </SectionCard>
       </section>
+
+      <Dialog
+        open={isCreateTaskOpen}
+        onOpenChange={(open) => {
+          setIsCreateTaskOpen(open);
+          if (!open) {
+            resetCreateTaskForm();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create task</DialogTitle>
+            <DialogDescription>
+              Create a new task for {brandsQuery.data.find((brand) => brand.id === resolvedBrandId)?.name}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form
+            className="space-y-4"
+            onSubmit={rowForm.handleSubmit((values) =>
+              addRowMutation.mutate({
+                ...values,
+                geolocation: values.geolocation || null,
+                keywords: finalizeKeywords(createKeywords, createKeywordsInput),
+              })
+            )}
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Country code</Label>
+                <Input {...countryCodeField} placeholder="CH" />
+              </div>
+              <div className="space-y-2">
+                <Label>Country name</Label>
+                <Input {...rowForm.register("countryName")} placeholder="Switzerland" />
+              </div>
+              <div className="space-y-2">
+                <Label>Language code</Label>
+                <Input {...rowForm.register("languageCode")} placeholder="en" />
+              </div>
+              <div className="space-y-2">
+                <Label>Language name</Label>
+                <Input {...rowForm.register("languageName")} placeholder="English" />
+              </div>
+              <div className="space-y-2">
+                <Label>Geolocation</Label>
+                <Input {...rowForm.register("geolocation")} placeholder="Zurich" />
+              </div>
+              <div className="space-y-2">
+                <Label>Keywords</Label>
+                <div className="space-y-3">
+                  {createKeywords.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {createKeywords.map((keyword) => (
+                        <Badge key={keyword} className="gap-1">
+                          <span>{keyword}</span>
+                          <button
+                            type="button"
+                            className="rounded-full hover:text-white"
+                            onClick={() =>
+                              removeKeyword(
+                                createKeywords,
+                                (keywords) => rowForm.setValue("keywords", keywords, { shouldValidate: true }),
+                                keyword,
+                              )
+                            }
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                  <Input
+                    value={createKeywordsInput}
+                    placeholder="brand name, brand review, is brand legit"
+                    onChange={(event) => {
+                      const nextState = buildKeywordInputState(createKeywords, event.target.value);
+                      setCreateKeywordsInput(nextState.inputValue);
+                      rowForm.setValue("keywords", nextState.keywords, { shouldValidate: true });
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsCreateTaskOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={addRowMutation.isPending}>
+                Create task
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!editingTask} onOpenChange={(open) => {
         if (!open) {

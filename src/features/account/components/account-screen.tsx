@@ -13,10 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { accountApi } from "@/features/account/api/account-api";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import { accountProfileSchema, type AccountProfileSchema } from "@/features/account/schemas/account-schema";
 
 export function AccountScreen() {
   const queryClient = useQueryClient();
+  const { updateUser } = useAuth();
   const query = useQuery({
     queryKey: ["account-profile"],
     queryFn: accountApi.getProfile,
@@ -26,6 +28,7 @@ export function AccountScreen() {
     resolver: zodResolver(accountProfileSchema),
     values: query.data
       ? {
+          workspaceName: query.data.workspaceName,
           companyName: query.data.companyName,
           name: query.data.name,
           email: query.data.email,
@@ -35,8 +38,13 @@ export function AccountScreen() {
 
   const mutation = useMutation({
     mutationFn: (values: AccountProfileSchema) => accountApi.updateProfile(values),
-    onSuccess: async () => {
+    onSuccess: async (_, values) => {
       await queryClient.invalidateQueries({ queryKey: ["account-profile"] });
+      updateUser({
+        workspaceName: values.workspaceName,
+        name: values.name,
+        email: values.email,
+      });
       toast.success("Account profile updated");
     },
   });
@@ -56,6 +64,10 @@ export function AccountScreen() {
       <section className="grid gap-6 xl:grid-cols-2">
         <SectionCard title="Company and profile" description="Primary account details for the signed-in workspace.">
           <form className="space-y-4" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
+            <div className="space-y-2">
+              <Label>Workspace name</Label>
+              <Input {...form.register("workspaceName")} />
+            </div>
             <div className="space-y-2">
               <Label>Company name</Label>
               <Input {...form.register("companyName")} />

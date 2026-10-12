@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sentient — Brand Sentiment Analysis
 
-## Getting Started
+**Sentient** is a functional frontend prototype for a SaaS platform that helps teams explore how brands are represented in search engine results. It brings brand configuration, search tasks, analysis runs, and URL-level sentiment results into one workflow.
 
-First, run the development server:
+> **Project status:** Frontend prototype with simulated data and a mock API layer. It is not connected to a production backend, and sentiment results shown in the demo are not live analyses.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## What it does
+
+- **Brand management:** Organize analysis workflows by brand.
+- **Task configuration:** Define and manage search tasks for each brand.
+- **Dashboard:** Browse brand-specific tasks, processing states, and sentiment summaries.
+- **Runs:** Create runs from available tasks, execute immediately or configure a scheduled run in the simulated workflow.
+- **Results:** Review run status and inspect sentiment information at the task and URL level.
+- **Account and access flows:** Explore login, account, and role-based navigation in the prototype.
+
+## Technology
+
+- **Next.js 16** with the App Router
+- **React 19** and **TypeScript**
+- **Tailwind CSS 4** and **shadcn/ui / Radix UI**
+- **TanStack Query** for asynchronous state and cache management
+- **React Hook Form**, **Zod**, and other supporting UI libraries
+
+## Architecture
+
+The codebase separates route definitions, feature implementation, reusable components, and data access:
+
+```text
+src/
+├── app/                 # Next.js routes, layouts, providers
+├── features/            # Feature-specific screens, components, API adapters
+├── components/
+│   ├── shared/          # Reusable product-level UI
+│   └── ui/              # UI primitives
+├── lib/
+│   ├── api/             # Mock API and simulated data operations
+│   └── mocks/           # Prototype datasets
+└── types/               # Shared TypeScript models
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Feature-level API modules (for example, `features/runs/api/runs-api.ts`) provide an interface between screens and the simulated data layer in `lib/api/mock-db.ts`. This allows frontend flows to be explored independently of backend integration.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Run locally
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Prerequisite:** A recent Node.js version compatible with Next.js 16.
 
-## Learn More
+```bash
+git clone https://github.com/majraL/sentient-frontend.git
+cd sentient-frontend
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open `http://localhost:3000` in your browser.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Other available scripts:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run build
+npm run lint
+```
 
-## Deploy on Vercel
+These are the project's configured commands; a successful build or lint run is not claimed here.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Development approach and my contribution
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+I worked on Sentient in collaboration with a backend engineer, focusing on **product flows, information architecture, interaction design, and iterative frontend development**.
+
+The process began by defining core workflows and composing an initial interface from available shadcn/ui components. I then used the working application to evaluate usability, refine navigation and access to information, and specify changes to functionality and UI states.
+
+**Codex was used extensively to generate and modify the React/TypeScript implementation.** My primary contribution was directing the implementation, testing flows in the browser, identifying issues, and iterating on the experience—not manually authoring the frontend code line by line.
+
+## Current limitations
+
+- API operations and analysis workflows are simulated using a local mock data layer.
+- Authentication is a prototype flow, not a production identity system.
+- Scheduling and sentiment processing do not represent live background jobs or live search analysis.
+- Backend integration, production security, and deployment readiness remain future work.
+
+---
+
+*This repository documents an evolving product prototype and an AI-assisted design-to-frontend workflow.*
